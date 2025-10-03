@@ -1,0 +1,17 @@
+[package]
+name = "pg_tempest_core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+derive_more = { workspace = true }
+regex = { workspace = true }
+tokio = { workspace = true }
+static_assertions = { workspace = true }
+
+[dev-dependencies]
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true }
