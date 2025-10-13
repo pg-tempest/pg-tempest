@@ -7,4 +7,5 @@ mod utils;
 pub mod alter_db_is_template;
 pub mod drop_template_db;
 pub mod get_dbs;
+pub mod recreate_template_db;
 mod tests;

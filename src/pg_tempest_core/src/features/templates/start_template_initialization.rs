@@ -1,6 +1,4 @@
-use crate::db_queries::create_db::create_database;
-use crate::db_queries::drop_template_db::drop_template_db;
-use crate::db_queries::get_dbs::get_dbs;
+use crate::db_queries::recreate_template_db::recreate_template_db;
 use crate::features::templates::TemplatesFeature;
 use crate::models::db_connection_options::DbConnectionOptions;
 use crate::models::template_database::{TemplateDb, TemplateInitializationState};
@@ -41,7 +39,9 @@ impl TemplatesFeature {
                 template_database_name,
                 initialization_deadline,
             } => {
-                let db_creation_result = recreate_template_db(self, &template_database_name).await;
+                let db_creation_result =
+                    recreate_template_db(&self.dbms_connections_pool, &template_database_name)
+                        .await;
 
                 match db_creation_result {
                     Ok(_) => Ok(StartTemplateInitializationOkResult::Started {
@@ -135,34 +135,6 @@ enum DesitionResult {
     InProgress {
         initialization_deadline: DateTime<Utc>,
     },
-}
-
-async fn recreate_template_db(
-    feature: &TemplatesFeature,
-    template_database_name: &TemplateDbName,
-) -> anyhow::Result<()> {
-    let databases = get_dbs(&feature.dbms_connections_pool).await?;
-    let template_db_exists = databases
-        .iter()
-        .find(|x| x.name == *template_database_name.as_ref())
-        .is_some();
-
-    if template_db_exists {
-        drop_template_db(
-            &feature.dbms_connections_pool,
-            template_database_name.as_ref(),
-        )
-        .await?;
-    }
-
-    create_database(
-        &feature.dbms_connections_pool,
-        &template_database_name.as_ref(),
-        true,
-    )
-    .await?;
-
-    Ok(())
 }
 
 async fn mark_as_failed(feature: &TemplatesFeature, template_hash: TemplateHash) {

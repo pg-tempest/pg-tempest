@@ -1,4 +1,4 @@
-use crate::db_queries::create_db::create_database;
+use crate::db_queries::create_db::create_db;
 use crate::db_queries::create_db_with_template::create_db_with_template;
 use crate::db_queries::drop_db::{DropDbError, drop_db};
 use crate::db_queries::tests::common;
@@ -17,7 +17,7 @@ async fn db_double_drop() {
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // DB creation
-    let result = create_database(&pool, &db_name, false).await;
+    let result = create_db(&pool, &db_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -54,7 +54,7 @@ async fn drop_used_template() {
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // Template creation
-    let result = create_database(&pool, &template_name, false).await;
+    let result = create_db(&pool, &template_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),

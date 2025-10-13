@@ -1,4 +1,4 @@
-use crate::db_queries::create_db::create_database;
+use crate::db_queries::create_db::create_db;
 use crate::db_queries::create_db_with_template::{
     CreateDbWithTemplateError, create_db_with_template,
 };
@@ -19,7 +19,7 @@ async fn db_double_creation() {
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // Template creation
-    let result = create_database(&pool, &template_name, false).await;
+    let result = create_db(&pool, &template_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),

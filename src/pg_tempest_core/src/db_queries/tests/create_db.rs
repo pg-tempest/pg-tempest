@@ -1,4 +1,4 @@
-use crate::db_queries::create_db::{CreateDatabaseError, create_database};
+use crate::db_queries::create_db::{CreateDatabaseError, create_db};
 use crate::db_queries::tests::common;
 use crate::models::value_types::pg_identifier::PgIdentifier;
 use testcontainers::runners::AsyncRunner;
@@ -15,7 +15,7 @@ async fn db_double_creation() {
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // First creation
-    let result = create_database(&pool, &db_name, false).await;
+    let result = create_db(&pool, &db_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -23,7 +23,7 @@ async fn db_double_creation() {
     }
 
     // Second creation
-    let result = create_database(&pool, &db_name, false).await;
+    let result = create_db(&pool, &db_name, false).await;
 
     assert! {
         matches!(result, Err(CreateDatabaseError::DbAlreadyExists {..})),

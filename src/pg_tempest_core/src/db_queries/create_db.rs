@@ -5,7 +5,7 @@ use derive_more::Display;
 use sqlx::PgPool;
 use thiserror::Error;
 
-pub async fn create_database(
+pub async fn create_db(
     pg_pool: &PgPool,
     db_name: &PgIdentifier,
     is_template: bool,
