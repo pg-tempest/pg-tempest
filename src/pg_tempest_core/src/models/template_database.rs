@@ -1,12 +1,18 @@
 ﻿use chrono::{DateTime, Utc};
 
+use crate::models::value_types::template_hash::TemplateHash;
+
 #[derive(Clone)]
-pub struct TemplateDatabase {
+pub struct TemplateDb {
     pub hash: TemplateHash,
-    pub has_idempotent_initialization: bool,
-    pub initialization_attempts: u32,
-    pub initialized: bool,
-    pub initialization_deadline_at: DateTime<Utc>,
+    pub initialization_state: TemplateInitializationState,
 }
 
-pub type TemplateHash = Box<[u8]>;
+#[derive(Clone)]
+pub enum TemplateInitializationState {
+    InProgress {
+        initialization_deadline: DateTime<Utc>,
+    },
+    Done,
+    Failed,
+}

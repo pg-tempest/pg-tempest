@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "src/pg_tempest_core",
     "src/pg_tempest_host",
-    "src/pg_tempest_server"
+    "src/pg_tempest_server",
 ]
 
 [workspace.dependencies]
@@ -16,12 +16,21 @@ async-trait = { version = "0.1.89" }
 chrono = { version = "0.4.42", features = ["serde"] }
 reqwest = { version = "0.12.23", features = ["json"] }
 url = { version = "2.5.7" }
-sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
+sqlx = { version = "0.8.2", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+] }
 tracing = "0.1.40"
 tower-http = { version = "0.6.1", features = ["trace"] }
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
-derive_more = { version = "2.0.1", features = ["as_ref", "display", "deref"] }
+derive_more = { version = "2.0.1", features = ["as_ref", "display", "deref", "debug", "into"] }
 regex = { version = "1.11.3" }
 testcontainers = { version = "0.24" }
 testcontainers-modules = { version = "0.12", features = ["postgres"] }
 static_assertions = { version = "1.1" }
+dashmap = { version = "6.1.0" }
+hex = { version = "0.4" }
+thiserror = { version = "2.0.17" }
+anyhow = { version = "1.0.100" }

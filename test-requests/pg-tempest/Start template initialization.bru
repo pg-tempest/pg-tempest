@@ -1,0 +1,22 @@
+meta {
+  name: Start template initialization
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8000/templates/start-initialization
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "templateHash": "0102030405060708090A0B0C0D0E0F01",
+    "initializationDuration": [2, 0]
+  }
+}
+
+settings {
+  encodeUrl: true
+}

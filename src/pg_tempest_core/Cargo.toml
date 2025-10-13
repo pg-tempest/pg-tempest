@@ -11,6 +11,10 @@ derive_more = { workspace = true }
 regex = { workspace = true }
 tokio = { workspace = true }
 static_assertions = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
 
 [dev-dependencies]
 testcontainers = { workspace = true }

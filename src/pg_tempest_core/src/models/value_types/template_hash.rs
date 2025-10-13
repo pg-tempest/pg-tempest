@@ -1,0 +1,70 @@
+use std::{fmt::Debug, str::FromStr};
+
+use derive_more::Display;
+
+pub const TEMPLATE_HASH_LENGHT: usize = 16;
+pub const TEMPLATE_HASH_LENGHT_IN_HEX: usize = 32;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Display)]
+#[display("{self:?}")]
+pub struct TemplateHash {
+    value: [u8; TEMPLATE_HASH_LENGHT],
+}
+
+impl TemplateHash {
+    pub fn new(value: [u8; TEMPLATE_HASH_LENGHT]) -> TemplateHash {
+        TemplateHash { value }
+    }
+}
+
+impl Debug for TemplateHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = hex::encode_upper(&self.value);
+        f.write_str(str.as_str())
+    }
+}
+
+impl From<TemplateHash> for String {
+    fn from(hash: TemplateHash) -> Self {
+        hex::encode_upper(&hash.value)
+    }
+}
+
+impl From<&TemplateHash> for String {
+    fn from(hash: &TemplateHash) -> Self {
+        hex::encode_upper(&hash.value)
+    }
+}
+
+impl FromStr for TemplateHash {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut hash = [0u8; TEMPLATE_HASH_LENGHT];
+        hex::decode_to_slice(s, &mut hash)?;
+
+        Ok(TemplateHash::new(hash))
+    }
+}
+
+impl Default for TemplateHash {
+    fn default() -> Self {
+        TemplateHash::new([0; TEMPLATE_HASH_LENGHT])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::models::value_types::template_hash::TemplateHash;
+
+    #[test]
+    fn template_hash_formats_as_upper_hex() {
+        let template_hash = TemplateHash::new([
+            01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16,
+        ]);
+
+        let str: String = template_hash.into();
+
+        assert_eq!(str, String::from("0102030405060708090A0B0C0D0E0F10"))
+    }
+}

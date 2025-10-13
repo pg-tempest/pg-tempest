@@ -1,8 +1,8 @@
-use crate::db_queries::create_database::create_database;
-use crate::db_queries::create_database_with_template::create_database_with_template;
-use crate::db_queries::drop_database::{DropDatabaseError, drop_database};
+use crate::db_queries::create_db::create_database;
+use crate::db_queries::create_db_with_template::create_db_with_template;
+use crate::db_queries::drop_db::{DropDbError, drop_db};
 use crate::db_queries::tests::common;
-use crate::models::pg_identifier::PgIdentifier;
+use crate::models::value_types::pg_identifier::PgIdentifier;
 use testcontainers::runners::AsyncRunner;
 
 #[tokio::test]
@@ -17,7 +17,7 @@ async fn db_double_drop() {
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // DB creation
-    let result = create_database(&pool, &db_name).await;
+    let result = create_database(&pool, &db_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -25,7 +25,7 @@ async fn db_double_drop() {
     }
 
     // First drop
-    let result = drop_database(&pool, &db_name).await;
+    let result = drop_db(&pool, &db_name).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -33,10 +33,10 @@ async fn db_double_drop() {
     }
 
     // Second drop
-    let result = drop_database(&pool, &db_name).await;
+    let result = drop_db(&pool, &db_name).await;
 
     assert! {
-        matches!(result, Err(DropDatabaseError::DbDoesntExists {..})),
+        matches!(result, Err(DropDbError::DbDoesntExists {..})),
         "{result:?}"
     }
 }
@@ -54,7 +54,7 @@ async fn drop_used_template() {
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // Template creation
-    let result = create_database(&pool, &template_name).await;
+    let result = create_database(&pool, &template_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -62,7 +62,7 @@ async fn drop_used_template() {
     }
 
     // Db creation
-    let result = create_database_with_template(&pool, &db_name, &template_name).await;
+    let result = create_db_with_template(&pool, &db_name, &template_name).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -70,7 +70,7 @@ async fn drop_used_template() {
     }
 
     // Drop template
-    let result = drop_database(&pool, &template_name).await;
+    let result = drop_db(&pool, &template_name).await;
 
     assert! {
         matches!(result, Ok(_)),

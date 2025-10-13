@@ -1,2 +1,1 @@
-﻿mod templates;
-mod command;
+﻿pub mod templates;
