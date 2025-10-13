@@ -4,6 +4,7 @@ use sqlx::PgPool;
 
 use crate::{configs::CoreConfigs, state_manager::StateManager, utils::clock::Clock};
 
+pub mod finish_template_initialization;
 pub mod start_template_initialization;
 
 pub struct TemplatesFeature {

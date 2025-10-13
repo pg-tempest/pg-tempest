@@ -3,8 +3,12 @@ use std::sync::Arc;
 use axum::{Router, routing::post};
 use pg_tempest_core::features::templates::TemplatesFeature;
 
-use crate::routes::templates::start_template_initialization::start_template_initialization;
+use crate::routes::templates::{
+    finish_template_initialization::finish_template_initialization,
+    start_template_initialization::start_template_initialization,
+};
 
+mod finish_template_initialization;
 mod start_template_initialization;
 
 pub fn create_templates_router(templates_feature: Arc<TemplatesFeature>) -> Router {
@@ -12,6 +16,10 @@ pub fn create_templates_router(templates_feature: Arc<TemplatesFeature>) -> Rout
         .route(
             "/templates/start-initialization",
             post(start_template_initialization),
+        )
+        .route(
+            "/templates/finish-initialization",
+            post(finish_template_initialization),
         )
         .with_state(templates_feature)
 }

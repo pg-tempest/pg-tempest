@@ -29,7 +29,7 @@ pub enum StartTemplateInitializationResponseBody {
     InProgress {
         initialization_deadline: DateTime<Utc>,
     },
-    Initialized,
+    Initialized {},
 }
 
 pub async fn start_template_initialization(
@@ -58,7 +58,7 @@ pub async fn start_template_initialization(
             initialization_deadline,
         },
         StartTemplateInitializationOkResult::Initialized => {
-            StartTemplateInitializationResponseBody::Initialized
+            StartTemplateInitializationResponseBody::Initialized {}
         }
     };
 
