@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use axum::{Json, extract::State};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -15,7 +15,7 @@ use crate::dtos::db_connection_options_dto::DbConnectionOptionsDto;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartTemplateInitializationRequestBody {
-    template_hash: Box<str>,
+    template_hash: TemplateHash,
     initialization_duration: TimeDelta,
 }
 
@@ -36,11 +36,11 @@ pub async fn start_template_initialization(
     State(feature): State<Arc<TemplatesFeature>>,
     Json(request_body): Json<StartTemplateInitializationRequestBody>,
 ) -> Result<Json<StartTemplateInitializationResponseBody>, String> {
-    let template_hash =
-        TemplateHash::from_str(&request_body.template_hash).map_err(|e| e.to_string())?;
-
     let result = feature
-        .start_template_initialization(template_hash, request_body.initialization_duration)
+        .start_template_initialization(
+            request_body.template_hash,
+            request_body.initialization_duration,
+        )
         .await
         .map_err(|e| e.to_string())?;
 

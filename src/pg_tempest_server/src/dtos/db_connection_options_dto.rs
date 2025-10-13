@@ -1,4 +1,6 @@
-use pg_tempest_core::models::db_connection_options::DbConnectionOptions;
+use pg_tempest_core::models::{
+    db_connection_options::DbConnectionOptions, value_types::pg_identifier::PgIdentifier,
+};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -8,7 +10,7 @@ pub struct DbConnectionOptionsDto {
     pub port: u16,
     pub username: Box<str>,
     pub password: Box<str>,
-    pub database: Box<str>,
+    pub database: PgIdentifier,
 }
 
 impl From<DbConnectionOptions> for DbConnectionOptionsDto {
@@ -18,7 +20,7 @@ impl From<DbConnectionOptions> for DbConnectionOptionsDto {
             port: value.port,
             username: value.username,
             password: value.password,
-            database: value.database.into(),
+            database: value.database,
         }
     }
 }

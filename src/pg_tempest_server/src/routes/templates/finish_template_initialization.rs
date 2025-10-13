@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use axum::{Json, extract::State};
 use pg_tempest_core::{
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FinishTemplateInitializationRequestBody {
-    template_hash: Box<str>,
+    template_hash: TemplateHash,
 }
 
 #[derive(Serialize)]
@@ -33,11 +33,9 @@ pub async fn finish_template_initialization(
     Json<FinishTemplateInitializationOkResponseBody>,
     Json<FinishTemplateInitializationErrorResponseBody>,
 > {
-    let template_hash = TemplateHash::from_str(&request_body.template_hash)
-        .map_err(|e| e.to_string())
-        .unwrap();
-
-    let result = feature.finish_template_initialization(template_hash).await;
+    let result = feature
+        .finish_template_initialization(request_body.template_hash)
+        .await;
 
     match result {
         Ok(()) => Ok(Json(FinishTemplateInitializationOkResponseBody {})),

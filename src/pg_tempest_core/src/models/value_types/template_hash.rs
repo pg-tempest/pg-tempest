@@ -1,12 +1,15 @@
 use std::{fmt::Debug, str::FromStr};
 
 use derive_more::Display;
+use serde::{Deserialize, Serialize};
 
 pub const TEMPLATE_HASH_LENGHT: usize = 16;
 pub const TEMPLATE_HASH_LENGHT_IN_HEX: usize = 32;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Display)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Display, Deserialize, Serialize, Default)]
 #[display("{self:?}")]
+#[serde(try_from = "&str")]
+#[serde(into = "Box<str>")]
 pub struct TemplateHash {
     value: [u8; TEMPLATE_HASH_LENGHT],
 }
@@ -24,15 +27,23 @@ impl Debug for TemplateHash {
     }
 }
 
-impl From<TemplateHash> for String {
-    fn from(hash: TemplateHash) -> Self {
-        hex::encode_upper(&hash.value)
+impl TryFrom<&str> for TemplateHash {
+    type Error = anyhow::Error;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        TemplateHash::from_str(s)
     }
 }
 
-impl From<&TemplateHash> for String {
-    fn from(hash: &TemplateHash) -> Self {
-        hex::encode_upper(&hash.value)
+impl From<TemplateHash> for Box<str> {
+    fn from(hash: TemplateHash) -> Self {
+        hash.to_string().into()
+    }
+}
+
+impl From<TemplateHash> for String {
+    fn from(hash: TemplateHash) -> Self {
+        hash.to_string()
     }
 }
 
@@ -47,12 +58,6 @@ impl FromStr for TemplateHash {
     }
 }
 
-impl Default for TemplateHash {
-    fn default() -> Self {
-        TemplateHash::new([0; TEMPLATE_HASH_LENGHT])
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::models::value_types::template_hash::TemplateHash;
@@ -63,8 +68,9 @@ mod tests {
             01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16,
         ]);
 
-        let str: String = template_hash.into();
-
-        assert_eq!(str, String::from("0102030405060708090A0B0C0D0E0F10"))
+        assert_eq!(
+            template_hash.to_string(),
+            String::from("0102030405060708090A0B0C0D0E0F10")
+        )
     }
 }
