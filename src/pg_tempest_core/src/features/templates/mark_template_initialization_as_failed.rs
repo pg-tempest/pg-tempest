@@ -1,8 +1,7 @@
 use crate::{
     features::templates::TemplatesFeature,
-    models::{
-        template_database::TemplateInitializationState, value_types::template_hash::TemplateHash,
-    },
+    metadata::template_metadata::TemplateInitializationState,
+    models::value_types::template_hash::TemplateHash,
 };
 
 pub enum MarkTemplateInitializationAsFailedErrorResult {
@@ -15,23 +14,23 @@ impl TemplatesFeature {
         &self,
         template_hash: TemplateHash,
     ) -> Result<(), MarkTemplateInitializationAsFailedErrorResult> {
-        self.state_manager
-            .execute_under_lock(template_hash, |state_shard| match state_shard {
-                None => Err(MarkTemplateInitializationAsFailedErrorResult::TemplateWasNotFound),
-                Some(state_shard) => {
-                    let initialization_state =
-                        &mut state_shard.template_database.initialization_state;
+        self.metadata_storage
+            .execute_under_lock(template_hash, |template_metadata| {
+                let Some(template_metadata) = template_metadata else {
+                    return Err(MarkTemplateInitializationAsFailedErrorResult::TemplateWasNotFound);
+                };
 
-                    if let TemplateInitializationState::Done = initialization_state {
-                        return Err(
-                            MarkTemplateInitializationAsFailedErrorResult::TemplateIsInitialized,
-                        );
-                    }
+                let initialization_state = &mut template_metadata.initialization_state;
 
-                    *initialization_state = TemplateInitializationState::Failed;
-
-                    Ok(())
+                if let TemplateInitializationState::Done = initialization_state {
+                    return Err(
+                        MarkTemplateInitializationAsFailedErrorResult::TemplateIsInitialized,
+                    );
                 }
+
+                *initialization_state = TemplateInitializationState::Failed;
+
+                Ok(())
             })
             .await
     }

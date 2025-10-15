@@ -9,30 +9,30 @@ use sqlx::{
 use crate::{
     configs::{CoreConfigs, DbmsConfigs},
     features::templates::TemplatesFeature,
-    state_manager::StateManager,
+    metadata::metadata_storage::MetadataStorage,
     utils::clock::SystemClock,
 };
 
 pub mod configs;
 pub mod db_queries;
 pub mod features;
+pub mod metadata;
 pub mod models;
-pub mod state_manager;
 pub mod utils;
 
 pub struct PgTempestCore {
     pub templates_feature: Arc<TemplatesFeature>,
-    pub state_manager: Arc<StateManager>,
+    pub metadata_storage: Arc<MetadataStorage>,
 }
 
 impl PgTempestCore {
     pub async fn new(configs: Arc<CoreConfigs>) -> anyhow::Result<PgTempestCore> {
         let pg_pool = create_pg_pool(&configs.dbms).await?;
-        let state_manager = Arc::new(StateManager::new());
+        let metadata_storage = Arc::new(MetadataStorage::new());
         let clock = Arc::new(SystemClock);
 
         let templates_feature = TemplatesFeature::new(
-            state_manager.clone(),
+            metadata_storage.clone(),
             pg_pool,
             clock.clone(),
             configs.clone(),
@@ -40,7 +40,7 @@ impl PgTempestCore {
 
         Ok(PgTempestCore {
             templates_feature: Arc::new(templates_feature),
-            state_manager: state_manager,
+            metadata_storage,
         })
     }
 }

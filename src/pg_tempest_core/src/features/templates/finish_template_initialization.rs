@@ -1,8 +1,7 @@
 use crate::{
     features::templates::TemplatesFeature,
-    models::{
-        template_database::TemplateInitializationState, value_types::template_hash::TemplateHash,
-    },
+    metadata::template_metadata::TemplateInitializationState,
+    models::value_types::template_hash::TemplateHash,
 };
 
 pub enum FinishTemplateInitializationErrorResult {
@@ -15,17 +14,16 @@ impl TemplatesFeature {
         &self,
         template_hash: TemplateHash,
     ) -> Result<(), FinishTemplateInitializationErrorResult> {
-        self.state_manager
-            .execute_under_lock(template_hash, |state_shard| match state_shard {
+        self.metadata_storage
+            .execute_under_lock(template_hash, |template_metadata| match template_metadata {
                 None => Err(FinishTemplateInitializationErrorResult::TemplateNotFound),
-                Some(state_shard) => match state_shard.template_database.initialization_state {
+                Some(template_metadata) => match template_metadata.initialization_state {
                     TemplateInitializationState::Done => Ok(()),
                     TemplateInitializationState::Failed => Err(
                         FinishTemplateInitializationErrorResult::TemplateInitializationWasFailed,
                     ),
                     TemplateInitializationState::InProgress { .. } => {
-                        state_shard.template_database.initialization_state =
-                            TemplateInitializationState::Done;
+                        template_metadata.initialization_state = TemplateInitializationState::Done;
                         Ok(())
                     }
                 },

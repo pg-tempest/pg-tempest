@@ -1,10 +1,12 @@
-use crate::db_queries::recreate_template_db::recreate_template_db;
 use crate::features::templates::TemplatesFeature;
+use crate::metadata::template_metadata::TemplateInitializationState;
 use crate::models::db_connection_options::DbConnectionOptions;
-use crate::models::template_database::{TemplateDb, TemplateInitializationState};
 use crate::models::value_types::template_db_name::TemplateDbName;
 use crate::models::value_types::template_hash::TemplateHash;
-use crate::state_manager::StateShard;
+use crate::{
+    db_queries::recreate_template_db::recreate_template_db,
+    metadata::template_metadata::TemplateMetadata,
+};
 use chrono::{DateTime, Duration, Utc};
 
 pub enum StartTemplateInitializationOkResult {
@@ -73,21 +75,17 @@ async fn make_decision(
     let now = feature.clock.now();
 
     feature
-        .state_manager
-        .execute_under_lock(template_hash, |state_shard| match state_shard {
+        .metadata_storage
+        .execute_under_lock(template_hash, |template_metadata| match template_metadata {
             None => {
                 let initialization_deadline = now + initialization_duration;
 
-                let template_database = TemplateDb {
-                    hash: template_hash,
+                *template_metadata = Some(TemplateMetadata {
+                    template_hash,
                     initialization_state: TemplateInitializationState::InProgress {
                         initialization_deadline,
                     },
-                };
-                *state_shard = Some(StateShard {
-                    template_database,
-                    test_database_usages: Vec::default(),
-                    test_databases: Vec::default(),
+                    test_dbs: Vec::new(),
                 });
 
                 return DesitionResult::RestartInitialization {
@@ -95,33 +93,29 @@ async fn make_decision(
                     initialization_deadline,
                 };
             }
-            Some(state_shard) => {
-                let template_database = &mut state_shard.template_database;
+            Some(template_metadata) => match template_metadata.initialization_state {
+                TemplateInitializationState::Done => DesitionResult::TemplateInitialized,
+                TemplateInitializationState::InProgress {
+                    initialization_deadline,
+                } if initialization_deadline > now => DesitionResult::InProgress {
+                    initialization_deadline,
+                },
+                TemplateInitializationState::Failed
+                | TemplateInitializationState::InProgress { .. } => {
+                    let initialization_deadline = now + initialization_duration;
+                    let template_database_name = TemplateDbName::new(template_hash);
 
-                match template_database.initialization_state {
-                    TemplateInitializationState::Done => DesitionResult::TemplateInitialized,
-                    TemplateInitializationState::InProgress {
-                        initialization_deadline,
-                    } if initialization_deadline > now => DesitionResult::InProgress {
-                        initialization_deadline,
-                    },
-                    TemplateInitializationState::Failed
-                    | TemplateInitializationState::InProgress { .. } => {
-                        let initialization_deadline = now + initialization_duration;
-                        let template_database_name = TemplateDbName::new(template_hash);
-
-                        template_database.initialization_state =
-                            TemplateInitializationState::InProgress {
-                                initialization_deadline,
-                            };
-
-                        DesitionResult::RestartInitialization {
-                            template_database_name,
+                    template_metadata.initialization_state =
+                        TemplateInitializationState::InProgress {
                             initialization_deadline,
-                        }
+                        };
+
+                    DesitionResult::RestartInitialization {
+                        template_database_name,
+                        initialization_deadline,
                     }
                 }
-            }
+            },
         })
         .await
 }
@@ -139,11 +133,10 @@ enum DesitionResult {
 
 async fn mark_as_failed(feature: &TemplatesFeature, template_hash: TemplateHash) {
     feature
-        .state_manager
-        .execute_under_lock(template_hash, |state_shard| {
-            if let Some(state_shard) = state_shard {
-                state_shard.template_database.initialization_state =
-                    TemplateInitializationState::Failed
+        .metadata_storage
+        .execute_under_lock(template_hash, |template_metadata| {
+            if let Some(template_metadata) = template_metadata {
+                template_metadata.initialization_state = TemplateInitializationState::Failed
             }
         })
         .await

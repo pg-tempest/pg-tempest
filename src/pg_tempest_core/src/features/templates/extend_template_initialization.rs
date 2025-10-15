@@ -4,9 +4,8 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     features::templates::TemplatesFeature,
-    models::{
-        template_database::TemplateInitializationState, value_types::template_hash::TemplateHash,
-    },
+    metadata::template_metadata::TemplateInitializationState,
+    models::value_types::template_hash::TemplateHash,
 };
 
 pub struct ExtendTemplateInitializationOkResult {
@@ -25,13 +24,13 @@ impl TemplatesFeature {
         template_hash: TemplateHash,
         additional_time: Duration,
     ) -> Result<ExtendTemplateInitializationOkResult, ExtendTemplateInitializationErrorResult> {
-        self.state_manager
-            .execute_under_lock(template_hash, |state_shard| {
-                let Some(state_shard) = state_shard else {
+        self.metadata_storage
+            .execute_under_lock(template_hash, |template_metadata| {
+                let Some(template_metadata) = template_metadata else {
                     return Err(ExtendTemplateInitializationErrorResult::TemplateWasNotFound);
                 };
 
-                let initialization_state = &mut state_shard.template_database.initialization_state;
+                let initialization_state = &mut template_metadata.initialization_state;
 
                 match initialization_state {
                     TemplateInitializationState::Done => {
