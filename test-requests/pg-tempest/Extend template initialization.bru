@@ -1,0 +1,11 @@
+meta {
+  name: Extend template initialization
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8000/templates/mark-initialization-as-failed
+  body: json
+  auth: none
+}
