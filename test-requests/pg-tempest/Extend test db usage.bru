@@ -1,0 +1,19 @@
+meta {
+  name: Extend test db usage
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8000/test-dbs/extend-usage
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "templateHash": "0102030405060708090A0B0C0D0E0F01",
+    "testDbId": 1,
+    "additionalTimeInSeconds": 10
+  }
+}
