@@ -11,6 +11,9 @@ mod configs;
 async fn main() {
     let configs = build_app_configs().unwrap();
 
+    let tracing_subscriber = tracing_subscriber::fmt().compact().finish();
+    tracing::subscriber::set_global_default(tracing_subscriber).unwrap();
+
     let tempest_core = PgTempestCore::new(configs.core.clone()).await.unwrap();
     let tempest_core = Arc::new(tempest_core);
 

@@ -9,3 +9,5 @@ pg_tempest_core = { path = "../pg_tempest_core" }
 pg_tempest_server = { path = "../pg_tempest_server" }
 config = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

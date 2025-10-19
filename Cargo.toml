@@ -22,10 +22,16 @@ sqlx = { version = "0.8.2", features = [
     "uuid",
     "chrono",
 ] }
-tracing = "0.1.40"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["json"] }
 tower-http = { version = "0.6.1", features = ["trace"] }
-tracing-subscriber = { version = "0.3.18", features = ["json"] }
-derive_more = { version = "2.0.1", features = ["as_ref", "display", "deref", "debug", "into"] }
+derive_more = { version = "2.0.1", features = [
+    "as_ref",
+    "display",
+    "deref",
+    "debug",
+    "into",
+] }
 regex = { version = "1.11.3" }
 testcontainers = { version = "0.24" }
 testcontainers-modules = { version = "0.12", features = ["postgres"] }
