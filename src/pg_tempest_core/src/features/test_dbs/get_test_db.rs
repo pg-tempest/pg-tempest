@@ -112,13 +112,10 @@ impl TestDbsFeature {
 
         Ok(GetTestDbOkResult {
             test_db_id: test_db_id,
-            connection_options: DbConnectionOptions {
-                host: self.configs.dbms.host.clone(),
-                port: self.configs.dbms.port,
-                username: self.configs.dbms.user.clone(),
-                password: self.configs.dbms.password.clone(),
-                database: test_db_name.into(),
-            },
+            connection_options: DbConnectionOptions::new_outer(
+                &self.configs.dbms,
+                test_db_name.into(),
+            ),
         })
     }
 }

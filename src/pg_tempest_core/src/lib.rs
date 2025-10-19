@@ -56,8 +56,8 @@ impl PgTempestCore {
 
 async fn create_pg_pool(configs: &DbmsConfigs) -> anyhow::Result<PgPool> {
     let pg_connect_options = PgConnectOptions::new_without_pgpass()
-        .host(&configs.host)
-        .port(configs.port)
+        .host(&configs.inner.host)
+        .port(configs.inner.port)
         .database(&configs.database)
         .username(&configs.user)
         .password(&configs.password);

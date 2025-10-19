@@ -47,13 +47,10 @@ impl TemplatesFeature {
 
                 match db_creation_result {
                     Ok(_) => Ok(StartTemplateInitializationOkResult::Started {
-                        database_connection_options: DbConnectionOptions {
-                            host: self.configs.dbms.host.clone(),
-                            port: self.configs.dbms.port,
-                            username: self.configs.dbms.user.clone(),
-                            password: self.configs.dbms.password.clone(),
-                            database: template_database_name.into(),
-                        },
+                        database_connection_options: DbConnectionOptions::new_outer(
+                            &self.configs.dbms,
+                            template_database_name.into(),
+                        ),
                         initialization_deadline,
                     }),
                     Err(err) => {

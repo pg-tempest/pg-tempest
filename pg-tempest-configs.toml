@@ -3,8 +3,11 @@ ipv4 = "127.0.0.1"
 port = 8000
 
 [core.dbms]
-host = "localhost"
-port = 5432
 database = "postgres"
 user = "postgres"
 password = "postgres"
+
+[core.dbms.inner]
+host = "localhost"
+port = 5432
+

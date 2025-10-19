@@ -4,14 +4,16 @@ services:
     ports: 
     - 8000:8000
     environment:
-      - PG_TEMPEST_CORE_DBMS_HOST=db
-      - PG_TEMPEST_CORE_DBMS_PORT=5432
+      - PG_TEMPEST_CORE_DBMS_INNER_HOST=db
+      - PG_TEMPEST_CORE_DBMS_INNER_PORT=5432
+      - PG_TEMPEST_CORE_DBMS_OUTER_HOST=localhost
+      - PG_TEMPEST_CORE_DBMS_OUTER_PORT=5433
 
   db:
     image: postgres
     restart: always
     shm_size: 128mb
     ports:
-      - 5432:5432
+      - 5433:5432
     environment:
       POSTGRES_PASSWORD: postgres
