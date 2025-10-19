@@ -1569,6 +1569,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pg-tempest"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "pg_tempest_core",
+ "pg_tempest_server",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "pg_tempest_core"
 version = "0.1.0"
 dependencies = [
@@ -1584,17 +1595,6 @@ dependencies = [
  "testcontainers",
  "testcontainers-modules",
  "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "pg_tempest_host"
-version = "0.1.0"
-dependencies = [
- "config",
- "pg_tempest_core",
- "pg_tempest_server",
- "serde",
  "tokio",
 ]
 

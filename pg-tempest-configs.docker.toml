@@ -1,0 +1,8 @@
+[server]
+ipv4 = "0.0.0.0"
+port = 8000
+
+[core.dbms]
+database = "postgres"
+user = "postgres"
+password = "postgres"

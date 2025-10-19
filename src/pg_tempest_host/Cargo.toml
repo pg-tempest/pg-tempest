@@ -1,5 +1,5 @@
 [package]
-name = "pg_tempest_host"
+name = "pg-tempest"
 version = "0.1.0"
 edition = "2024"
 

@@ -1,0 +1,17 @@
+services:
+  pg-tempest:
+    image: pg-tempest:0.1.0-alpha
+    ports: 
+    - 8000:8000
+    environment:
+      - PG_TEMPEST_CORE_DBMS_HOST=db
+      - PG_TEMPEST_CORE_DBMS_PORT=5432
+
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: postgres
