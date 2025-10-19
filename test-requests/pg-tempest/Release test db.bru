@@ -1,0 +1,23 @@
+meta {
+  name: Release test db
+  type: http
+  seq: 7
+}
+
+post {
+  url: http://localhost:8000/test-dbs/release
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "templateHash": "0102030405060708090A0B0C0D0E0F01",
+    "testDbId": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
