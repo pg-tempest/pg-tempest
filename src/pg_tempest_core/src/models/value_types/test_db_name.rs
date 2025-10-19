@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::LazyLock};
 
 use anyhow::anyhow;
-use derive_more::{AsRef, Debug, Display};
+use derive_more::{AsRef, Debug, Display, Into};
 use regex::Regex;
 
 use crate::models::value_types::{
@@ -11,10 +11,11 @@ use crate::models::value_types::{
 static TEMPLATE_DB_NAME_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"TEMPEST_([0-9a-fA-F]{32})_TEST_DB([0-9a-fA-F]{4})"#).unwrap());
 
-#[derive(AsRef, Display, Debug)]
+#[derive(AsRef, Display, Debug, Into)]
 #[display("{pg_identifier}")]
 pub struct TestDbName {
     #[as_ref]
+    #[into]
     pg_identifier: PgIdentifier,
     #[as_ref]
     template_hash: TemplateHash,

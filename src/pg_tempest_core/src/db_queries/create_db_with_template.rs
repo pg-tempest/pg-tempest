@@ -4,7 +4,7 @@ use crate::{
 };
 use derive_more::Display;
 use sqlx::PgPool;
-use std::error::Error;
+use thiserror::Error;
 
 pub async fn create_db_with_template(
     pg_pool: &PgPool,
@@ -35,10 +35,10 @@ pub async fn create_db_with_template(
     }
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug, Display, Error)]
 #[display("{self:?}")]
 pub enum CreateDbWithTemplateError {
     DbAlreadyExists { db_name: PgIdentifier },
     TemplateDoesntExist { template_name: PgIdentifier },
-    Unexpected { inner: Box<dyn Error> },
+    Unexpected { inner: anyhow::Error },
 }

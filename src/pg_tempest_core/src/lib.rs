@@ -8,7 +8,7 @@ use sqlx::{
 
 use crate::{
     configs::{CoreConfigs, DbmsConfigs},
-    features::templates::TemplatesFeature,
+    features::{templates::TemplatesFeature, test_dbs::TestDbsFeature},
     metadata::metadata_storage::MetadataStorage,
     utils::clock::SystemClock,
 };
@@ -22,6 +22,7 @@ pub mod utils;
 
 pub struct PgTempestCore {
     pub templates_feature: Arc<TemplatesFeature>,
+    pub test_dbs_feature: Arc<TestDbsFeature>,
     pub metadata_storage: Arc<MetadataStorage>,
 }
 
@@ -33,13 +34,21 @@ impl PgTempestCore {
 
         let templates_feature = TemplatesFeature::new(
             metadata_storage.clone(),
-            pg_pool,
+            pg_pool.clone(),
+            clock.clone(),
+            configs.clone(),
+        );
+
+        let test_dbs_feature = TestDbsFeature::new(
+            metadata_storage.clone(),
+            pg_pool.clone(),
             clock.clone(),
             configs.clone(),
         );
 
         Ok(PgTempestCore {
             templates_feature: Arc::new(templates_feature),
+            test_dbs_feature: Arc::new(test_dbs_feature),
             metadata_storage,
         })
     }

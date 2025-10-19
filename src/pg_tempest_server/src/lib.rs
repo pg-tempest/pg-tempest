@@ -4,7 +4,10 @@ use axum::Router;
 use pg_tempest_core::PgTempestCore;
 use tokio::net::TcpListener;
 
-use crate::{configs::ServerConfigs, routes::templates::create_templates_router};
+use crate::{
+    configs::ServerConfigs,
+    routes::{templates::create_templates_router, test_dbs::create_test_dbs_router},
+};
 
 pub mod configs;
 mod dtos;
@@ -17,7 +20,9 @@ pub struct Server {
 
 impl Server {
     pub fn new(features: Arc<PgTempestCore>, configs: Arc<ServerConfigs>) -> Server {
-        let router = create_templates_router(features.templates_feature.clone());
+        let router = Router::new()
+            .merge(create_templates_router(features.templates_feature.clone()))
+            .merge(create_test_dbs_router(features.test_dbs_feature.clone()));
 
         Server { router, configs }
     }

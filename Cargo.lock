@@ -1602,6 +1602,7 @@ dependencies = [
 name = "pg_tempest_server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "chrono",
  "pg_tempest_core",
