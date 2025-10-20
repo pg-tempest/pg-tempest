@@ -1,59 +1,70 @@
 use std::{sync::Arc, time::Duration};
 
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
+use chrono::{DateTime, Utc};
 use pg_tempest_core::{
     features::test_dbs::{TestDbsFeature, get_test_db::GetTestDbErrorResult},
     models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId},
 };
 use serde::{Deserialize, Serialize};
 
-use crate::dtos::db_connection_options_dto::DbConnectionOptionsDto;
+use crate::dtos::{db_connection_options_dto::DbConnectionOptionsDto, json_response::JsonResponse};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetTestDbRequestBody {
     pub template_hash: TemplateHash,
-    pub usage_duration: Duration,
+    pub usage_duration_in_seconds: u64,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GetTestDbOkResponse {
-    pub test_db_id: TestDbId,
-    pub db_connection_options: DbConnectionOptionsDto,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum GetTestDbErrorResponse {
+pub enum GetTestDbResponseBody {
+    TestDbWasCreated {
+        test_db_id: TestDbId,
+        db_connection_options: DbConnectionOptionsDto,
+        usage_deadline: DateTime<Utc>,
+    },
     TemplateWasNotFound {},
     TemplateIsNotInitialized {},
-    Unknown { inner: Box<str> },
+    UnknownError {
+        message: Box<str>,
+    },
 }
 
 pub async fn get_test_db(
     State(feature): State<Arc<TestDbsFeature>>,
     Json(request_body): Json<GetTestDbRequestBody>,
-) -> Result<Json<GetTestDbOkResponse>, Json<GetTestDbErrorResponse>> {
+) -> JsonResponse<GetTestDbResponseBody> {
     let result = feature
-        .get_test_db(request_body.template_hash, request_body.usage_duration)
+        .get_test_db(
+            request_body.template_hash,
+            Duration::from_secs(request_body.usage_duration_in_seconds),
+        )
         .await;
 
     match result {
-        Ok(result) => Ok(Json(GetTestDbOkResponse {
-            test_db_id: result.test_db_id,
-            db_connection_options: result.connection_options.into(),
-        })),
-        Err(GetTestDbErrorResult::TemplateWasNotFound) => {
-            Err(Json(GetTestDbErrorResponse::TemplateWasNotFound {}))
-        }
-        Err(GetTestDbErrorResult::TemplateIsNotInitalized) => {
-            Err(Json(GetTestDbErrorResponse::TemplateIsNotInitialized {}))
-        }
-        Err(GetTestDbErrorResult::Unknown { inner }) => {
-            Err(Json(GetTestDbErrorResponse::Unknown {
-                inner: inner.to_string().into(),
-            }))
-        }
+        Ok(result) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: GetTestDbResponseBody::TestDbWasCreated {
+                test_db_id: result.test_db_id,
+                db_connection_options: result.connection_options.into(),
+                usage_deadline: result.usage_deadline,
+            },
+        },
+        Err(GetTestDbErrorResult::TemplateWasNotFound) => JsonResponse {
+            status_code: StatusCode::NOT_FOUND,
+            body: GetTestDbResponseBody::TemplateWasNotFound {},
+        },
+        Err(GetTestDbErrorResult::TemplateIsNotInitalized) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: GetTestDbResponseBody::TemplateIsNotInitialized {},
+        },
+        Err(GetTestDbErrorResult::Unknown { inner }) => JsonResponse {
+            status_code: StatusCode::INTERNAL_SERVER_ERROR,
+            body: GetTestDbResponseBody::UnknownError {
+                message: inner.to_string().into(),
+            },
+        },
     }
 }

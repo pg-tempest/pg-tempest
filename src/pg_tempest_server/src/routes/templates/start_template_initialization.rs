@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-use axum::{Json, extract::State};
-use chrono::{DateTime, TimeDelta, Utc};
+use axum::{Json, extract::State, http::StatusCode};
+use chrono::{DateTime, Utc};
 use pg_tempest_core::{
     features::templates::{
         TemplatesFeature, start_template_initialization::StartTemplateInitializationOkResult,
@@ -10,57 +10,70 @@ use pg_tempest_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::dtos::db_connection_options_dto::DbConnectionOptionsDto;
+use crate::dtos::{db_connection_options_dto::DbConnectionOptionsDto, json_response::JsonResponse};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartTemplateInitializationRequestBody {
     template_hash: TemplateHash,
-    initialization_duration: TimeDelta,
+    initialization_duration_in_seconds: u64,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum StartTemplateInitializationResponseBody {
-    Started {
+    InitializationWasStarted {
         database_connection_options: DbConnectionOptionsDto,
         initialization_deadline: DateTime<Utc>,
     },
-    InProgress {
+    InitializationIsInProgress {
         initialization_deadline: DateTime<Utc>,
     },
-    Initialized {},
+    InitializationIsFinished {},
+    UnexpectedError {
+        message: Box<str>,
+    },
 }
 
 pub async fn start_template_initialization(
     State(feature): State<Arc<TemplatesFeature>>,
     Json(request_body): Json<StartTemplateInitializationRequestBody>,
-) -> Result<Json<StartTemplateInitializationResponseBody>, String> {
+) -> JsonResponse<StartTemplateInitializationResponseBody> {
     let result = feature
         .start_template_initialization(
             request_body.template_hash,
-            request_body.initialization_duration,
+            Duration::from_secs(request_body.initialization_duration_in_seconds),
         )
-        .await
-        .map_err(|e| e.to_string())?;
+        .await;
 
-    let response_body = match result {
-        StartTemplateInitializationOkResult::InProgress {
-            initialization_deadline,
-        } => StartTemplateInitializationResponseBody::InProgress {
-            initialization_deadline,
-        },
-        StartTemplateInitializationOkResult::Started {
+    match result {
+        Ok(StartTemplateInitializationOkResult::InitializationWasStarted {
             database_connection_options,
             initialization_deadline,
-        } => StartTemplateInitializationResponseBody::Started {
-            database_connection_options: database_connection_options.into(),
-            initialization_deadline,
+        }) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: StartTemplateInitializationResponseBody::InitializationWasStarted {
+                database_connection_options: database_connection_options.into(),
+                initialization_deadline,
+            },
         },
-        StartTemplateInitializationOkResult::Initialized => {
-            StartTemplateInitializationResponseBody::Initialized {}
-        }
-    };
-
-    Ok(Json(response_body))
+        Ok(StartTemplateInitializationOkResult::InitializationIsInProgress {
+            initialization_deadline,
+        }) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: StartTemplateInitializationResponseBody::InitializationIsInProgress {
+                initialization_deadline,
+            },
+        },
+        Ok(StartTemplateInitializationOkResult::InitializationIsFinished) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: StartTemplateInitializationResponseBody::InitializationIsFinished {},
+        },
+        Err(err) => JsonResponse {
+            status_code: StatusCode::INTERNAL_SERVER_ERROR,
+            body: StartTemplateInitializationResponseBody::UnexpectedError {
+                message: err.to_string().into(),
+            },
+        },
+    }
 }

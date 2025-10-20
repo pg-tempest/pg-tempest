@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::features::templates::TemplatesFeature;
 use crate::metadata::template_metadata::TemplateInitializationState;
 use crate::models::db_connection_options::DbConnectionOptions;
@@ -7,17 +9,17 @@ use crate::{
     db_queries::recreate_template_db::recreate_template_db,
     metadata::template_metadata::TemplateMetadata,
 };
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 
 pub enum StartTemplateInitializationOkResult {
-    Started {
+    InitializationWasStarted {
         database_connection_options: DbConnectionOptions,
         initialization_deadline: DateTime<Utc>,
     },
-    InProgress {
+    InitializationIsInProgress {
         initialization_deadline: DateTime<Utc>,
     },
-    Initialized,
+    InitializationIsFinished,
 }
 
 impl TemplatesFeature {
@@ -30,13 +32,15 @@ impl TemplatesFeature {
 
         match desition {
             DesitionResult::TemplateInitialized => {
-                Ok(StartTemplateInitializationOkResult::Initialized)
+                Ok(StartTemplateInitializationOkResult::InitializationIsFinished)
             }
             DesitionResult::InProgress {
                 initialization_deadline,
-            } => Ok(StartTemplateInitializationOkResult::InProgress {
-                initialization_deadline,
-            }),
+            } => Ok(
+                StartTemplateInitializationOkResult::InitializationIsInProgress {
+                    initialization_deadline,
+                },
+            ),
             DesitionResult::RestartInitialization {
                 template_database_name,
                 initialization_deadline,
@@ -46,13 +50,15 @@ impl TemplatesFeature {
                         .await;
 
                 match db_creation_result {
-                    Ok(_) => Ok(StartTemplateInitializationOkResult::Started {
-                        database_connection_options: DbConnectionOptions::new_outer(
-                            &self.configs.dbms,
-                            template_database_name.into(),
-                        ),
-                        initialization_deadline,
-                    }),
+                    Ok(_) => Ok(
+                        StartTemplateInitializationOkResult::InitializationWasStarted {
+                            database_connection_options: DbConnectionOptions::new_outer(
+                                &self.configs.dbms,
+                                template_database_name.into(),
+                            ),
+                            initialization_deadline,
+                        },
+                    ),
                     Err(err) => {
                         mark_as_failed(self, template_database_name.into()).await;
 

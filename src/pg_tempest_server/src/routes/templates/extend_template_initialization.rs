@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use pg_tempest_core::{
     features::templates::{
@@ -9,6 +9,8 @@ use pg_tempest_core::{
     models::value_types::template_hash::TemplateHash,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::dtos::json_response::JsonResponse;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,41 +21,41 @@ pub struct ExtendTemplateInitializationRequestBody {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ExtendTemplateInitializationOkResponseBody {
-    new_initialization_deadline: DateTime<Utc>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ExtendTemplateInitializationErrorResponseBody {
+pub enum ExtendTemplateInitializationResponseBody {
+    InitializationWasExtended {
+        new_initialization_deadline: DateTime<Utc>,
+    },
     TemplateWasNotFound {},
-    TemplateIsInitialized {},
-    TemplateInitializationWasFailed {},
+    InitializationIsFinished {},
+    InitializationIsFailed {},
 }
 
 pub async fn extend_template_initialization(
     State(feature): State<Arc<TemplatesFeature>>,
     Json(request_body): Json<ExtendTemplateInitializationRequestBody>,
-) -> Result<
-    Json<ExtendTemplateInitializationOkResponseBody>,
-    Json<ExtendTemplateInitializationErrorResponseBody>,
-> {
+) -> JsonResponse<ExtendTemplateInitializationResponseBody> {
     let result = feature
         .extend_template_initialization(request_body.template_hash, request_body.additional_time)
         .await;
 
     match result {
-        Ok(result) => Ok(Json(ExtendTemplateInitializationOkResponseBody {
-            new_initialization_deadline: result.new_initialization_deadline,
-        })),
-        Err(ExtendTemplateInitializationErrorResult::TemplateWasNotFound) => Err(Json(
-            ExtendTemplateInitializationErrorResponseBody::TemplateWasNotFound {},
-        )),
-        Err(ExtendTemplateInitializationErrorResult::TemplateIsInitialized) => Err(Json(
-            ExtendTemplateInitializationErrorResponseBody::TemplateIsInitialized {},
-        )),
-        Err(ExtendTemplateInitializationErrorResult::TemplateInitializationWasFailed) => Err(Json(
-            ExtendTemplateInitializationErrorResponseBody::TemplateInitializationWasFailed {},
-        )),
+        Ok(result) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: ExtendTemplateInitializationResponseBody::InitializationWasExtended {
+                new_initialization_deadline: result.new_initialization_deadline,
+            },
+        },
+        Err(ExtendTemplateInitializationErrorResult::TemplateWasNotFound) => JsonResponse {
+            status_code: StatusCode::NOT_FOUND,
+            body: ExtendTemplateInitializationResponseBody::TemplateWasNotFound {},
+        },
+        Err(ExtendTemplateInitializationErrorResult::InitializationIsFinished) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: ExtendTemplateInitializationResponseBody::InitializationIsFinished {},
+        },
+        Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: ExtendTemplateInitializationResponseBody::InitializationIsFailed {},
+        },
     }
 }

@@ -14,8 +14,8 @@ pub struct ExtendTemplateInitializationOkResult {
 
 pub enum ExtendTemplateInitializationErrorResult {
     TemplateWasNotFound,
-    TemplateIsInitialized,
-    TemplateInitializationWasFailed,
+    InitializationIsFinished,
+    InitializationIsFailed,
 }
 
 impl TemplatesFeature {
@@ -34,11 +34,11 @@ impl TemplatesFeature {
 
                 match initialization_state {
                     TemplateInitializationState::Done => {
-                        Err(ExtendTemplateInitializationErrorResult::TemplateIsInitialized)
+                        Err(ExtendTemplateInitializationErrorResult::InitializationIsFinished)
                     }
-                    TemplateInitializationState::Failed => Err(
-                        ExtendTemplateInitializationErrorResult::TemplateInitializationWasFailed,
-                    ),
+                    TemplateInitializationState::Failed => {
+                        Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed)
+                    }
                     TemplateInitializationState::InProgress {
                         initialization_deadline,
                     } => {

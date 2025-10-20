@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
+
 use crate::{
     db_queries::recreate_test_db::recreate_test_db,
     features::test_dbs::TestDbsFeature,
@@ -16,6 +18,7 @@ use crate::{
 pub struct GetTestDbOkResult {
     pub test_db_id: TestDbId,
     pub connection_options: DbConnectionOptions,
+    pub usage_deadline: DateTime<Utc>,
 }
 
 pub enum GetTestDbErrorResult {
@@ -32,7 +35,7 @@ impl TestDbsFeature {
     ) -> Result<GetTestDbOkResult, GetTestDbErrorResult> {
         let now = self.clock.now();
 
-        let (template_hash, test_db_id) = self
+        let (template_hash, test_db_id, usage_deadline) = self
             .metadata_storage
             .execute_under_lock(template_hash, |template_metadata| {
                 let Some(template_metadata) = template_metadata else {
@@ -58,7 +61,7 @@ impl TestDbsFeature {
                         test_db_metadata.corrupted = false;
                         test_db_metadata.usage_deadline = Some(usage_deadline);
 
-                        Ok((template_hash, test_db_metadata.id))
+                        Ok((template_hash, test_db_metadata.id, usage_deadline))
                     }
                     None => {
                         let next_test_db_id = template_metadata
@@ -77,7 +80,7 @@ impl TestDbsFeature {
 
                         template_metadata.test_dbs.push(test_db_metadata);
 
-                        Ok((template_hash, next_test_db_id))
+                        Ok((template_hash, next_test_db_id, usage_deadline))
                     }
                 }
             })
@@ -116,6 +119,7 @@ impl TestDbsFeature {
                 &self.configs.dbms,
                 test_db_name.into(),
             ),
+            usage_deadline,
         })
     }
 }

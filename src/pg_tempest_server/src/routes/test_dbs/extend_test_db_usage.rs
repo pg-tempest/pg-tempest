@@ -1,12 +1,14 @@
 use std::{sync::Arc, time::Duration};
 
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use pg_tempest_core::{
     features::test_dbs::{TestDbsFeature, extend_test_db_usage::ExtendTestDbUsageErrorResult},
     models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId},
 };
 use serde::{Deserialize, Serialize};
+
+use crate::dtos::json_response::JsonResponse;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,13 +20,8 @@ pub struct ExtendTestDbUsageRequestBody {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ExtendTestDbUsageOkResponse {
-    new_usage_deadline: DateTime<Utc>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ExtendTestDbUsageErrorResponse {
+pub enum ExtendTestDbUsageResponseBody {
+    UsageWasExtended { new_usage_deadline: DateTime<Utc> },
     TemplateWasNotFound {},
     TestDbWasNotFound {},
     TestDbIsNotInUse {},
@@ -34,7 +31,7 @@ pub enum ExtendTestDbUsageErrorResponse {
 pub async fn extend_test_db_usage(
     State(feature): State<Arc<TestDbsFeature>>,
     Json(request_body): Json<ExtendTestDbUsageRequestBody>,
-) -> Result<Json<ExtendTestDbUsageOkResponse>, Json<ExtendTestDbUsageErrorResponse>> {
+) -> JsonResponse<ExtendTestDbUsageResponseBody> {
     let result = feature
         .extend_test_db_usage(
             request_body.template_hash,
@@ -44,20 +41,27 @@ pub async fn extend_test_db_usage(
         .await;
 
     match result {
-        Ok(result) => Ok(Json(ExtendTestDbUsageOkResponse {
-            new_usage_deadline: result.new_usage_deadline,
-        })),
-        Err(ExtendTestDbUsageErrorResult::TemplateWasNotFound) => {
-            Err(Json(ExtendTestDbUsageErrorResponse::TemplateWasNotFound {}))
-        }
-        Err(ExtendTestDbUsageErrorResult::TestDbWasNotFound) => {
-            Err(Json(ExtendTestDbUsageErrorResponse::TestDbWasNotFound {}))
-        }
-        Err(ExtendTestDbUsageErrorResult::TestDbIsNotInUse) => {
-            Err(Json(ExtendTestDbUsageErrorResponse::TestDbIsNotInUse {}))
-        }
-        Err(ExtendTestDbUsageErrorResult::TestDbIsCorrupted) => {
-            Err(Json(ExtendTestDbUsageErrorResponse::TestDbIsCorrupted {}))
-        }
+        Ok(result) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: ExtendTestDbUsageResponseBody::UsageWasExtended {
+                new_usage_deadline: result.new_usage_deadline,
+            },
+        },
+        Err(ExtendTestDbUsageErrorResult::TemplateWasNotFound) => JsonResponse {
+            status_code: StatusCode::NOT_FOUND,
+            body: ExtendTestDbUsageResponseBody::TemplateWasNotFound {},
+        },
+        Err(ExtendTestDbUsageErrorResult::TestDbWasNotFound) => JsonResponse {
+            status_code: StatusCode::NOT_FOUND,
+            body: ExtendTestDbUsageResponseBody::TestDbWasNotFound {},
+        },
+        Err(ExtendTestDbUsageErrorResult::TestDbIsNotInUse) => JsonResponse {
+            status_code: StatusCode::BAD_REQUEST,
+            body: ExtendTestDbUsageResponseBody::TestDbIsNotInUse {},
+        },
+        Err(ExtendTestDbUsageErrorResult::TestDbIsCorrupted) => JsonResponse {
+            status_code: StatusCode::BAD_REQUEST,
+            body: ExtendTestDbUsageResponseBody::TestDbIsCorrupted {},
+        },
     }
 }

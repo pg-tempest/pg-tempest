@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use pg_tempest_core::{
     features::templates::{
         TemplatesFeature,
@@ -10,7 +10,7 @@ use pg_tempest_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::dtos::empty_dto::EmptyDto;
+use crate::dtos::json_response::JsonResponse;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,26 +20,32 @@ pub struct MarkTemplateInitializationAsFailedRequestBody {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum MarkTemplateInitializationAsFailedErrorResponseBody {
+pub enum MarkTemplateInitializationAsFailedResponseBody {
+    InitializationIsFailed {},
     TemplateWasNotFound {},
-    TemplateIsInitialized {},
+    InitializationIsFinished {},
 }
 
 pub async fn mark_template_initialization_as_failed(
     State(feature): State<Arc<TemplatesFeature>>,
     Json(request_body): Json<MarkTemplateInitializationAsFailedRequestBody>,
-) -> Result<Json<EmptyDto>, Json<MarkTemplateInitializationAsFailedErrorResponseBody>> {
+) -> JsonResponse<MarkTemplateInitializationAsFailedResponseBody> {
     let result = feature
         .mark_template_initialization_as_failed(request_body.template_hash)
         .await;
 
     match result {
-        Ok(()) => Ok(Json(EmptyDto {})),
-        Err(MarkTemplateInitializationAsFailedErrorResult::TemplateIsInitialized) => Err(Json(
-            MarkTemplateInitializationAsFailedErrorResponseBody::TemplateIsInitialized {},
-        )),
-        Err(MarkTemplateInitializationAsFailedErrorResult::TemplateWasNotFound) => Err(Json(
-            MarkTemplateInitializationAsFailedErrorResponseBody::TemplateWasNotFound {},
-        )),
+        Ok(()) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: MarkTemplateInitializationAsFailedResponseBody::InitializationIsFailed {},
+        },
+        Err(MarkTemplateInitializationAsFailedErrorResult::TemplateIsInitialized) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: MarkTemplateInitializationAsFailedResponseBody::InitializationIsFinished {},
+        },
+        Err(MarkTemplateInitializationAsFailedErrorResult::TemplateWasNotFound) => JsonResponse {
+            status_code: StatusCode::NOT_FOUND,
+            body: MarkTemplateInitializationAsFailedResponseBody::TemplateWasNotFound {},
+        },
     }
 }

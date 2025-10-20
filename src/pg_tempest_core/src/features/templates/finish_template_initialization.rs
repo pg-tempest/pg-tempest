@@ -5,8 +5,8 @@ use crate::{
 };
 
 pub enum FinishTemplateInitializationErrorResult {
-    TemplateNotFound,
-    TemplateInitializationWasFailed,
+    TemplateWasNotFound,
+    InitializationIsFailed,
 }
 
 impl TemplatesFeature {
@@ -16,12 +16,12 @@ impl TemplatesFeature {
     ) -> Result<(), FinishTemplateInitializationErrorResult> {
         self.metadata_storage
             .execute_under_lock(template_hash, |template_metadata| match template_metadata {
-                None => Err(FinishTemplateInitializationErrorResult::TemplateNotFound),
+                None => Err(FinishTemplateInitializationErrorResult::TemplateWasNotFound),
                 Some(template_metadata) => match template_metadata.initialization_state {
                     TemplateInitializationState::Done => Ok(()),
-                    TemplateInitializationState::Failed => Err(
-                        FinishTemplateInitializationErrorResult::TemplateInitializationWasFailed,
-                    ),
+                    TemplateInitializationState::Failed => {
+                        Err(FinishTemplateInitializationErrorResult::InitializationIsFailed)
+                    }
                     TemplateInitializationState::InProgress { .. } => {
                         template_metadata.initialization_state = TemplateInitializationState::Done;
                         Ok(())
