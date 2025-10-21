@@ -20,7 +20,7 @@ pub struct ExtendTemplateInitializationRequestBody {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ExtendTemplateInitializationResponseBody {
     InitializationWasExtended {
         new_initialization_deadline: DateTime<Utc>,

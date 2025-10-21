@@ -19,7 +19,7 @@ pub struct ExtendTestDbUsageRequestBody {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ExtendTestDbUsageResponseBody {
     UsageWasExtended { new_usage_deadline: DateTime<Utc> },
     TemplateWasNotFound {},

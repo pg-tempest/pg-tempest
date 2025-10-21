@@ -20,7 +20,7 @@ pub struct StartTemplateInitializationRequestBody {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum StartTemplateInitializationResponseBody {
     InitializationWasStarted {
         database_connection_options: DbConnectionOptionsDto,

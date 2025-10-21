@@ -17,7 +17,7 @@ pub struct ReleaseTestDbRequestBody {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ReleaseTestDbResponseBody {
     TestDbWasReleased {},
     TemplateWasNotFound {},

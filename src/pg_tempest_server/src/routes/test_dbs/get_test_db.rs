@@ -18,7 +18,7 @@ pub struct GetTestDbRequestBody {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum GetTestDbResponseBody {
     TestDbWasCreated {
         test_db_id: TestDbId,
