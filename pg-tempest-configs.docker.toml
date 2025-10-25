@@ -7,5 +7,5 @@ database = "postgres"
 user = "postgres"
 password = "postgres"
 
-[dbPool]
-minSize = 10
+[db_pool]
+min_size = 10

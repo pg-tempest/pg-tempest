@@ -6,7 +6,6 @@ use pg_tempest_server::configs::ServerConfigs;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct AppConfigs {
     pub dbms: Arc<DbmsConfigs>,
     #[serde(default)]
