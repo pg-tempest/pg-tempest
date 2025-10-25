@@ -1,6 +1,5 @@
 use crate::{
-    features::templates::TemplatesFeature,
-    metadata::template_metadata::TemplateInitializationState,
+    PgTempestCore, metadata::template_metadata::TemplateInitializationState,
     models::value_types::template_hash::TemplateHash,
 };
 
@@ -9,7 +8,7 @@ pub enum MarkTemplateInitializationAsFailedErrorResult {
     TemplateIsInitialized,
 }
 
-impl TemplatesFeature {
+impl PgTempestCore {
     pub async fn mark_template_initialization_as_failed(
         &self,
         template_hash: TemplateHash,

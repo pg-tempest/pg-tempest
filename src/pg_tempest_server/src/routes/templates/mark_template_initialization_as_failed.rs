@@ -2,10 +2,8 @@ use std::sync::Arc;
 
 use axum::{Json, extract::State, http::StatusCode};
 use pg_tempest_core::{
-    features::templates::{
-        TemplatesFeature,
-        mark_template_initialization_as_failed::MarkTemplateInitializationAsFailedErrorResult,
-    },
+    PgTempestCore,
+    features::templates::mark_template_initialization_as_failed::MarkTemplateInitializationAsFailedErrorResult,
     models::value_types::template_hash::TemplateHash,
 };
 use serde::{Deserialize, Serialize};
@@ -27,10 +25,10 @@ pub enum MarkTemplateInitializationAsFailedResponseBody {
 }
 
 pub async fn mark_template_initialization_as_failed(
-    State(feature): State<Arc<TemplatesFeature>>,
+    State(tempest_core): State<Arc<PgTempestCore>>,
     Json(request_body): Json<MarkTemplateInitializationAsFailedRequestBody>,
 ) -> JsonResponse<MarkTemplateInitializationAsFailedResponseBody> {
-    let result = feature
+    let result = tempest_core
         .mark_template_initialization_as_failed(request_body.template_hash)
         .await;
 

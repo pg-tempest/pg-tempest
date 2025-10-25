@@ -2,7 +2,10 @@
 ipv4 = "0.0.0.0"
 port = 8000
 
-[core.dbms]
+[dbms]
 database = "postgres"
 user = "postgres"
 password = "postgres"
+
+[dbPool]
+minSize = 10

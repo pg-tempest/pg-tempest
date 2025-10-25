@@ -3,8 +3,7 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 
 use crate::{
-    features::templates::TemplatesFeature,
-    metadata::template_metadata::TemplateInitializationState,
+    PgTempestCore, metadata::template_metadata::TemplateInitializationState,
     models::value_types::template_hash::TemplateHash,
 };
 
@@ -18,7 +17,7 @@ pub enum ExtendTemplateInitializationErrorResult {
     InitializationIsFailed,
 }
 
-impl TemplatesFeature {
+impl PgTempestCore {
     pub async fn extend_template_initialization(
         &self,
         template_hash: TemplateHash,

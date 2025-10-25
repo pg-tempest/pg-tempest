@@ -14,7 +14,9 @@ async fn main() {
     let tracing_subscriber = tracing_subscriber::fmt().compact().finish();
     tracing::subscriber::set_global_default(tracing_subscriber).unwrap();
 
-    let tempest_core = PgTempestCore::new(configs.core.clone()).await.unwrap();
+    let tempest_core = PgTempestCore::new(configs.dbms.clone(), configs.db_pool.clone())
+        .await
+        .unwrap();
     let tempest_core = Arc::new(tempest_core);
 
     let server = Server::new(tempest_core, configs.server.clone());

@@ -3,7 +3,8 @@ use std::{sync::Arc, time::Duration};
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use pg_tempest_core::{
-    features::test_dbs::{TestDbsFeature, get_test_db::GetTestDbErrorResult},
+    PgTempestCore,
+    features::test_dbs::get_test_db::GetTestDbErrorResult,
     models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId},
 };
 use serde::{Deserialize, Serialize};
@@ -33,10 +34,10 @@ pub enum GetTestDbResponseBody {
 }
 
 pub async fn get_test_db(
-    State(feature): State<Arc<TestDbsFeature>>,
+    State(tempest_core): State<Arc<PgTempestCore>>,
     Json(request_body): Json<GetTestDbRequestBody>,
 ) -> JsonResponse<GetTestDbResponseBody> {
-    let result = feature
+    let result = tempest_core
         .get_test_db(
             request_body.template_hash,
             Duration::from_secs(request_body.usage_duration_in_seconds),

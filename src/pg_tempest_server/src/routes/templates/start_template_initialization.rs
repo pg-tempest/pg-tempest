@@ -3,9 +3,8 @@ use std::{sync::Arc, time::Duration};
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use pg_tempest_core::{
-    features::templates::{
-        TemplatesFeature, start_template_initialization::StartTemplateInitializationOkResult,
-    },
+    PgTempestCore,
+    features::templates::start_template_initialization::StartTemplateInitializationOkResult,
     models::value_types::template_hash::TemplateHash,
 };
 use serde::{Deserialize, Serialize};
@@ -36,10 +35,10 @@ pub enum StartTemplateInitializationResponseBody {
 }
 
 pub async fn start_template_initialization(
-    State(feature): State<Arc<TemplatesFeature>>,
+    State(tempest_core): State<Arc<PgTempestCore>>,
     Json(request_body): Json<StartTemplateInitializationRequestBody>,
 ) -> JsonResponse<StartTemplateInitializationResponseBody> {
-    let result = feature
+    let result = tempest_core
         .start_template_initialization(
             request_body.template_hash,
             Duration::from_secs(request_body.initialization_duration_in_seconds),

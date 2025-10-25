@@ -21,10 +21,10 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(features: Arc<PgTempestCore>, configs: Arc<ServerConfigs>) -> Server {
+    pub fn new(tempest_core: Arc<PgTempestCore>, configs: Arc<ServerConfigs>) -> Server {
         let router = Router::new()
-            .merge(create_templates_router(features.templates_feature.clone()))
-            .merge(create_test_dbs_router(features.test_dbs_feature.clone()))
+            .merge(create_templates_router(tempest_core.clone()))
+            .merge(create_test_dbs_router(tempest_core.clone()))
             .layer(
                 TraceLayer::new_for_http().on_response(
                     DefaultOnResponse::new()

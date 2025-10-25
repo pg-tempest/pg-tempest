@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{Router, routing::post};
-use pg_tempest_core::features::templates::TemplatesFeature;
+use pg_tempest_core::PgTempestCore;
 
 use crate::routes::templates::{
     extend_template_initialization::extend_template_initialization,
@@ -15,7 +15,7 @@ mod finish_template_initialization;
 mod mark_template_initialization_as_failed;
 mod start_template_initialization;
 
-pub fn create_templates_router(templates_feature: Arc<TemplatesFeature>) -> Router {
+pub fn create_templates_router(tempest_core: Arc<PgTempestCore>) -> Router {
     Router::new()
         .route(
             "/templates/start-initialization",
@@ -33,5 +33,5 @@ pub fn create_templates_router(templates_feature: Arc<TemplatesFeature>) -> Rout
             "/templates/extend-initialization",
             post(extend_template_initialization),
         )
-        .with_state(templates_feature)
+        .with_state(tempest_core)
 }

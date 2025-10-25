@@ -1,14 +1,16 @@
 use std::{env, sync::Arc};
 
 use config::{Config, ConfigError};
-use pg_tempest_core::configs::CoreConfigs;
+use pg_tempest_core::configs::{db_pool_configs::DbPoolConfigs, dbms_configs::DbmsConfigs};
 use pg_tempest_server::configs::ServerConfigs;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfigs {
-    pub core: Arc<CoreConfigs>,
+    pub dbms: Arc<DbmsConfigs>,
+    #[serde(default)]
+    pub db_pool: Arc<DbPoolConfigs>,
     pub server: Arc<ServerConfigs>,
 }
 

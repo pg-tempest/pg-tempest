@@ -3,7 +3,8 @@ use std::time::Duration;
 use chrono::{DateTime, Utc};
 
 use crate::{
-    features::test_dbs::TestDbsFeature,
+    PgTempestCore,
+    metadata::template_metadata::TestDbState,
     models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId},
 };
 
@@ -18,7 +19,7 @@ pub enum ExtendTestDbUsageErrorResult {
     TestDbIsCorrupted,
 }
 
-impl TestDbsFeature {
+impl PgTempestCore {
     pub async fn extend_test_db_usage(
         &self,
         template_hash: TemplateHash,
@@ -39,11 +40,10 @@ impl TestDbsFeature {
                     return Err(ExtendTestDbUsageErrorResult::TestDbWasNotFound);
                 };
 
-                if test_db.corrupted {
-                    return Err(ExtendTestDbUsageErrorResult::TestDbIsCorrupted);
-                }
-
-                let Some(ref mut usage_deadline) = test_db.usage_deadline else {
+                let TestDbState::InUse {
+                    ref mut usage_deadline,
+                } = test_db.state
+                else {
                     return Err(ExtendTestDbUsageErrorResult::TestDbIsNotInUse);
                 };
 

@@ -2,12 +2,6 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CoreConfigs {
-    pub dbms: DbmsConfigs,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct DbmsConfigs {
     pub inner: InnerDbmsConfigs,
     #[serde(default)]

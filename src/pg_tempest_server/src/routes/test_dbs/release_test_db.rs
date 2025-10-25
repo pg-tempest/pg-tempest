@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use axum::{Json, extract::State, http::StatusCode};
 use pg_tempest_core::{
-    features::test_dbs::{TestDbsFeature, release_test_db::ReleaseTestDbErrorResult},
+    PgTempestCore,
+    features::test_dbs::release_test_db::ReleaseTestDbErrorResult,
     models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId},
 };
 use serde::{Deserialize, Serialize};
@@ -22,13 +23,14 @@ pub enum ReleaseTestDbResponseBody {
     TestDbWasReleased {},
     TemplateWasNotFound {},
     TestDbWasNotFound {},
+    TestDbIsNotInUse {},
 }
 
 pub async fn release_test_db(
-    State(feature): State<Arc<TestDbsFeature>>,
+    State(tempest_core): State<Arc<PgTempestCore>>,
     Json(request_body): Json<ReleaseTestDbRequestBody>,
 ) -> JsonResponse<ReleaseTestDbResponseBody> {
-    let result = feature
+    let result = tempest_core
         .release_test_db(request_body.template_hash, request_body.test_db_id)
         .await;
 
@@ -44,6 +46,10 @@ pub async fn release_test_db(
         Err(ReleaseTestDbErrorResult::TestDbWasNotFound) => JsonResponse {
             status_code: StatusCode::NOT_FOUND,
             body: ReleaseTestDbResponseBody::TestDbWasNotFound {},
+        },
+        Err(ReleaseTestDbErrorResult::TestDbIsNotInUse) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: ReleaseTestDbResponseBody::TestDbIsNotInUse {},
         },
     }
 }

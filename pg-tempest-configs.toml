@@ -2,12 +2,15 @@
 ipv4 = "127.0.0.1"
 port = 8000
 
-[core.dbms]
+[dbms]
 database = "postgres"
 user = "postgres"
 password = "postgres"
 
-[core.dbms.inner]
+[dbms.inner]
 host = "localhost"
 port = 5432
+
+[dbPool]
+minSize = 10
 

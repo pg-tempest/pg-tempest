@@ -1,16 +1,17 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
+use tokio::sync::oneshot;
 
 use crate::{
-    db_queries::recreate_test_db::recreate_test_db,
-    features::test_dbs::TestDbsFeature,
-    metadata::template_metadata::{TemplateInitializationState, TestDbMetadata},
+    PgTempestCore,
+    metadata::template_metadata::{
+        TemplateInitializationState, TestDbMetadata, TestDbState, TestDbUsage, TestDbWaiter,
+    },
     models::{
         db_connection_options::DbConnectionOptions,
         value_types::{
-            template_db_name::TemplateDbName, template_hash::TemplateHash, test_db_id::TestDbId,
-            test_db_name::TestDbName,
+            template_hash::TemplateHash, test_db_id::TestDbId, test_db_name::TestDbName,
         },
     },
 };
@@ -27,99 +28,92 @@ pub enum GetTestDbErrorResult {
     Unknown { inner: anyhow::Error },
 }
 
-impl TestDbsFeature {
+impl PgTempestCore {
     pub async fn get_test_db(
-        &self,
+        self: Arc<PgTempestCore>,
         template_hash: TemplateHash,
         usage_duration: Duration,
     ) -> Result<GetTestDbOkResult, GetTestDbErrorResult> {
-        let now = self.clock.now();
-
-        let (template_hash, test_db_id, usage_deadline) = self
+        let test_db_usage_or_reciver: TestDbUsageOrReciver = self
             .metadata_storage
-            .execute_under_lock(template_hash, |template_metadata| {
-                let Some(template_metadata) = template_metadata else {
+            .execute_under_lock(template_hash, |template| {
+                let Some(template) = template else {
                     return Err(GetTestDbErrorResult::TemplateWasNotFound);
                 };
 
-                match template_metadata.initialization_state {
+                match template.initialization_state {
                     TemplateInitializationState::Done => {}
                     _ => return Err(GetTestDbErrorResult::TemplateIsNotInitalized),
                 };
 
-                let test_db_metadata = template_metadata.test_dbs.iter_mut().find(|test_db| {
-                    test_db.corrupted
-                        || test_db
-                            .usage_deadline
-                            .is_some_and(|deadline| deadline <= now)
-                });
+                let ready_test_db = template
+                    .test_dbs
+                    .iter_mut()
+                    .find(|test_db| matches!(test_db.state, TestDbState::Ready));
 
-                let usage_deadline = now + usage_duration;
+                if let Some(ready_test_db) = ready_test_db {
+                    let usage = TestDbUsage {
+                        test_db_id: ready_test_db.id,
+                        deadline: self.clock.now() + usage_duration,
+                    };
 
-                match test_db_metadata {
-                    Some(test_db_metadata) => {
-                        test_db_metadata.corrupted = false;
-                        test_db_metadata.usage_deadline = Some(usage_deadline);
+                    ready_test_db.state = TestDbState::InUse {
+                        usage_deadline: usage.deadline,
+                    };
 
-                        Ok((template_hash, test_db_metadata.id, usage_deadline))
-                    }
-                    None => {
-                        let next_test_db_id = template_metadata
-                            .test_dbs
-                            .iter()
-                            .map(|x| x.id)
-                            .max()
-                            .map(|x| x + 1)
-                            .unwrap_or(1u16);
-
-                        let test_db_metadata = TestDbMetadata {
-                            id: next_test_db_id,
-                            corrupted: false,
-                            usage_deadline: Some(usage_deadline),
-                        };
-
-                        template_metadata.test_dbs.push(test_db_metadata);
-
-                        Ok((template_hash, next_test_db_id, usage_deadline))
-                    }
+                    return Ok(TestDbUsageOrReciver::Usage(usage));
                 }
+
+                let (sender, reciver) = oneshot::channel();
+                let waiter = TestDbWaiter {
+                    usage_duration,
+                    readines_sender: sender,
+                };
+                template.test_db_waiters.push_back(waiter);
+
+                let test_dbs_in_creation = template
+                    .test_dbs
+                    .iter()
+                    .filter(|x| matches!(x.state, TestDbState::Creating))
+                    .count();
+                let waiter_count = template.test_db_waiters.len();
+
+                if waiter_count > test_dbs_in_creation {
+                    let test_db = TestDbMetadata {
+                        id: template.next_test_db_id(),
+                        state: TestDbState::Creating,
+                    };
+
+                    PgTempestCore::start_test_db_creation_in_background(
+                        self.clone(),
+                        template_hash,
+                        test_db.id,
+                    );
+                }
+
+                Ok(TestDbUsageOrReciver::Reciver(reciver))
             })
             .await?;
 
-        let test_db_name = TestDbName::new(template_hash, test_db_id);
-        let db_creation_result = recreate_test_db(
-            &self.dbms_connections_pool,
-            &test_db_name,
-            &TemplateDbName::new(template_hash),
-        )
-        .await;
+        let usage = match test_db_usage_or_reciver {
+            TestDbUsageOrReciver::Usage(usage) => usage,
+            TestDbUsageOrReciver::Reciver(reciver) => reciver.await.unwrap(),
+        };
 
-        if let Err(error) = db_creation_result {
-            self.metadata_storage
-                .execute_under_lock(template_hash, |template_metadata| {
-                    if let Some(template_metadata) = template_metadata {
-                        if let Some(test_db) = template_metadata
-                            .test_dbs
-                            .iter_mut()
-                            .find(|x| x.id == test_db_id)
-                        {
-                            test_db.corrupted = true;
-                            test_db.usage_deadline = None;
-                        }
-                    }
-                })
-                .await;
-
-            return Err(GetTestDbErrorResult::Unknown { inner: error });
-        }
+        let test_db_name = TestDbName::new(template_hash, usage.test_db_id);
 
         Ok(GetTestDbOkResult {
-            test_db_id: test_db_id,
+            test_db_id: usage.test_db_id,
             connection_options: DbConnectionOptions::new_outer(
-                &self.configs.dbms,
+                &self.dbms_configs,
                 test_db_name.into(),
             ),
-            usage_deadline,
+            usage_deadline: usage.deadline,
         })
     }
+}
+
+enum TestDbUsageOrReciver {
+    Usage(TestDbUsage),
+    Reciver(oneshot::Receiver<TestDbUsage>),
 }

@@ -1,6 +1,7 @@
+use std::collections::VecDeque;
 use std::time::Duration;
 
-use crate::features::templates::TemplatesFeature;
+use crate::PgTempestCore;
 use crate::metadata::template_metadata::TemplateInitializationState;
 use crate::models::db_connection_options::DbConnectionOptions;
 use crate::models::value_types::template_db_name::TemplateDbName;
@@ -22,7 +23,7 @@ pub enum StartTemplateInitializationOkResult {
     InitializationIsFinished,
 }
 
-impl TemplatesFeature {
+impl PgTempestCore {
     pub async fn start_template_initialization(
         &self,
         hash: TemplateHash,
@@ -53,7 +54,7 @@ impl TemplatesFeature {
                     Ok(_) => Ok(
                         StartTemplateInitializationOkResult::InitializationWasStarted {
                             database_connection_options: DbConnectionOptions::new_outer(
-                                &self.configs.dbms,
+                                &self.dbms_configs,
                                 template_database_name.into(),
                             ),
                             initialization_deadline,
@@ -71,13 +72,13 @@ impl TemplatesFeature {
 }
 
 async fn make_decision(
-    feature: &TemplatesFeature,
+    tempest_core: &PgTempestCore,
     template_hash: TemplateHash,
     initialization_duration: Duration,
 ) -> DesitionResult {
-    let now = feature.clock.now();
+    let now = tempest_core.clock.now();
 
-    feature
+    tempest_core
         .metadata_storage
         .execute_under_lock(template_hash, |template_metadata| match template_metadata {
             None => {
@@ -89,6 +90,8 @@ async fn make_decision(
                         initialization_deadline,
                     },
                     test_dbs: Vec::new(),
+                    test_db_waiters: VecDeque::new(),
+                    test_db_id_sequence: 0,
                 });
 
                 return DesitionResult::RestartInitialization {
@@ -134,8 +137,8 @@ enum DesitionResult {
     },
 }
 
-async fn mark_as_failed(feature: &TemplatesFeature, template_hash: TemplateHash) {
-    feature
+async fn mark_as_failed(tempest_core: &PgTempestCore, template_hash: TemplateHash) {
+    tempest_core
         .metadata_storage
         .execute_under_lock(template_hash, |template_metadata| {
             if let Some(template_metadata) = template_metadata {
