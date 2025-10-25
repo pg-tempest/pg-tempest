@@ -6,32 +6,32 @@ use crate::{
     models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId},
 };
 
-pub enum ReleaseTestDbErrorResult {
+pub enum FinishTestDbUsageErrorResult {
     TemplateWasNotFound,
     TestDbWasNotFound,
     TestDbIsNotInUse,
 }
 
 impl PgTempestCore {
-    pub async fn release_test_db(
+    pub async fn finish_test_db_usage(
         self: Arc<PgTempestCore>,
         template_hash: TemplateHash,
         test_db_id: TestDbId,
-    ) -> Result<(), ReleaseTestDbErrorResult> {
+    ) -> Result<(), FinishTestDbUsageErrorResult> {
         self.metadata_storage
             .execute_under_lock(template_hash, |template_metadata| {
                 let template = template_metadata
                     .as_mut()
-                    .ok_or(ReleaseTestDbErrorResult::TemplateWasNotFound)?;
+                    .ok_or(FinishTestDbUsageErrorResult::TemplateWasNotFound)?;
 
                 let test_db = template
                     .test_dbs
                     .iter_mut()
                     .find(|test_db| test_db.id == test_db_id)
-                    .ok_or(ReleaseTestDbErrorResult::TestDbWasNotFound)?;
+                    .ok_or(FinishTestDbUsageErrorResult::TestDbWasNotFound)?;
 
                 if !matches!(test_db.state, TestDbState::InUse { .. }) {
-                    return Err(ReleaseTestDbErrorResult::TestDbIsNotInUse);
+                    return Err(FinishTestDbUsageErrorResult::TestDbIsNotInUse);
                 }
 
                 test_db.state = TestDbState::Creating;

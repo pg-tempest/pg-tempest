@@ -1,4 +1,4 @@
 pub mod extend_template_initialization;
+pub mod fail_template_initialization;
 pub mod finish_template_initialization;
-pub mod mark_template_initialization_as_failed;
 pub mod start_template_initialization;

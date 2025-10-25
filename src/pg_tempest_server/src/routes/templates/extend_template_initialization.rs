@@ -15,7 +15,7 @@ use crate::dtos::json_response::JsonResponse;
 #[serde(rename_all = "camelCase")]
 pub struct ExtendTemplateInitializationRequestBody {
     template_hash: TemplateHash,
-    additional_time: Duration,
+    additional_time_in_seconds: u64,
 }
 
 #[derive(Serialize)]
@@ -34,7 +34,10 @@ pub async fn extend_template_initialization(
     Json(request_body): Json<ExtendTemplateInitializationRequestBody>,
 ) -> JsonResponse<ExtendTemplateInitializationResponseBody> {
     let result = tempest_core
-        .extend_template_initialization(request_body.template_hash, request_body.additional_time)
+        .extend_template_initialization(
+            request_body.template_hash,
+            Duration::from_secs(request_body.additional_time_in_seconds),
+        )
         .await;
 
     match result {

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{Json, extract::State, http::StatusCode};
 use pg_tempest_core::{
     PgTempestCore,
-    features::test_dbs::release_test_db::ReleaseTestDbErrorResult,
+    features::test_dbs::finish_test_db_usage::FinishTestDbUsageErrorResult,
     models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId},
 };
 use serde::{Deserialize, Serialize};
@@ -12,44 +12,44 @@ use crate::dtos::json_response::JsonResponse;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ReleaseTestDbRequestBody {
+pub struct FinishTestDbUsageRequestBody {
     template_hash: TemplateHash,
     test_db_id: TestDbId,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum ReleaseTestDbResponseBody {
+pub enum FinishTestDbUsageResponseBody {
     TestDbWasReleased {},
     TemplateWasNotFound {},
     TestDbWasNotFound {},
     TestDbIsNotInUse {},
 }
 
-pub async fn release_test_db(
+pub async fn finish_test_db_usage(
     State(tempest_core): State<Arc<PgTempestCore>>,
-    Json(request_body): Json<ReleaseTestDbRequestBody>,
-) -> JsonResponse<ReleaseTestDbResponseBody> {
+    Json(request_body): Json<FinishTestDbUsageRequestBody>,
+) -> JsonResponse<FinishTestDbUsageResponseBody> {
     let result = tempest_core
-        .release_test_db(request_body.template_hash, request_body.test_db_id)
+        .finish_test_db_usage(request_body.template_hash, request_body.test_db_id)
         .await;
 
     match result {
         Ok(_) => JsonResponse {
             status_code: StatusCode::OK,
-            body: ReleaseTestDbResponseBody::TestDbWasReleased {},
+            body: FinishTestDbUsageResponseBody::TestDbWasReleased {},
         },
-        Err(ReleaseTestDbErrorResult::TemplateWasNotFound) => JsonResponse {
+        Err(FinishTestDbUsageErrorResult::TemplateWasNotFound) => JsonResponse {
             status_code: StatusCode::NOT_FOUND,
-            body: ReleaseTestDbResponseBody::TemplateWasNotFound {},
+            body: FinishTestDbUsageResponseBody::TemplateWasNotFound {},
         },
-        Err(ReleaseTestDbErrorResult::TestDbWasNotFound) => JsonResponse {
+        Err(FinishTestDbUsageErrorResult::TestDbWasNotFound) => JsonResponse {
             status_code: StatusCode::NOT_FOUND,
-            body: ReleaseTestDbResponseBody::TestDbWasNotFound {},
+            body: FinishTestDbUsageResponseBody::TestDbWasNotFound {},
         },
-        Err(ReleaseTestDbErrorResult::TestDbIsNotInUse) => JsonResponse {
+        Err(FinishTestDbUsageErrorResult::TestDbIsNotInUse) => JsonResponse {
             status_code: StatusCode::CONFLICT,
-            body: ReleaseTestDbResponseBody::TestDbIsNotInUse {},
+            body: FinishTestDbUsageResponseBody::TestDbIsNotInUse {},
         },
     }
 }
