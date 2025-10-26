@@ -13,4 +13,5 @@ port = 5432
 
 [db_pool]
 min_size = 10
+creation_retries_delay_in_ms = 100
 

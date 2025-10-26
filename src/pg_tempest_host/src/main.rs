@@ -17,9 +17,11 @@ async fn main() {
     let tempest_core = PgTempestCore::new(configs.dbms.clone(), configs.db_pool.clone())
         .await
         .unwrap();
+
     let tempest_core = Arc::new(tempest_core);
 
-    let server = Server::new(tempest_core, configs.server.clone());
+    let server = Server::new(tempest_core.clone(), configs.server.clone());
 
+    tempest_core.start_test_db_creation_retries_in_background();
     server.start().await;
 }
