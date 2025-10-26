@@ -46,7 +46,7 @@ impl PgTempestCore {
                         bail!("Failed to create {test_db_name}");
                     }
 
-                    if let Some(test_db_waiter) = template.test_db_waiters.pop_front() {
+                    while let Some(test_db_waiter) = template.test_db_waiters.pop_front() {
                         let usage_deadline = self.clock.now() + test_db_waiter.usage_duration;
                         let usage = TestDbUsage {
                             test_db_id,
