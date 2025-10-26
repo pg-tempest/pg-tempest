@@ -24,7 +24,7 @@ sqlx = { version = "0.8.2", features = [
 ] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["json"] }
-tower-http = { version = "0.6.1", features = ["trace"] }
+tower = { version = "0.5.2" }
 derive_more = { version = "2.0.1", features = [
     "as_ref",
     "display",
