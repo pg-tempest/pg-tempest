@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tracing::{debug, info, instrument, warn};
+
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{TemplateInitializationState, TestDbMetadata, TestDbState},
@@ -12,6 +14,7 @@ pub enum FinishTemplateInitializationErrorResult {
 }
 
 impl PgTempestCore {
+    #[instrument(skip_all)]
     pub async fn finish_template_initialization(
         self: Arc<PgTempestCore>,
         template_hash: TemplateHash,
@@ -19,12 +22,17 @@ impl PgTempestCore {
         self.metadata_storage
             .execute_under_lock(template_hash, |template_metadata| {
                 let Some(template_metadata) = template_metadata else {
+                    warn!("Template {template_hash} was not found");
                     return Err(FinishTemplateInitializationErrorResult::TemplateWasNotFound);
                 };
 
                 match template_metadata.initialization_state {
-                    TemplateInitializationState::Done => Ok(()),
+                    TemplateInitializationState::Done => {
+                        debug!("Template {template_hash} initialization is already finished");
+                        Ok(())
+                    }
                     TemplateInitializationState::Failed => {
+                        warn!("Template {template_hash} initialization is already failed");
                         Err(FinishTemplateInitializationErrorResult::InitializationIsFailed)
                     }
                     TemplateInitializationState::InProgress { .. } => {
@@ -36,15 +44,12 @@ impl PgTempestCore {
                                 state: TestDbState::Creating {},
                             };
 
-                            PgTempestCore::start_test_db_creation_in_background(
-                                self.clone(),
-                                template_hash,
-                                test_db.id,
-                            );
+                            tokio::spawn(self.clone().recreate_test_db(template_hash, test_db.id));
 
                             template_metadata.test_dbs.push(test_db);
                         }
 
+                        info!("Template {template_hash} initialization was finished");
                         Ok(())
                     }
                 }

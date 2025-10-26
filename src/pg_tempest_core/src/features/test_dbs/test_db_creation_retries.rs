@@ -48,10 +48,8 @@ impl PgTempestCore {
                                 }
 
                                 test_db.state = TestDbState::Creating;
-
-                                self.clone().start_test_db_creation_in_background(
-                                    template_hash,
-                                    test_db.id,
+                                tokio::spawn(
+                                    self.clone().recreate_test_db(template_hash, test_db.id),
                                 );
                             }
                         })

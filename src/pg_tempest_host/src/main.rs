@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use pg_tempest_core::PgTempestCore;
 use pg_tempest_server::Server;
+use tracing::Level;
+use tracing_subscriber::{fmt::format::DefaultFields, layer::SubscriberExt};
 
 use crate::configs::build_app_configs;
 
@@ -11,12 +13,19 @@ mod configs;
 async fn main() {
     let configs = build_app_configs().unwrap();
 
-    let tracing_subscriber = tracing_subscriber::fmt()
-        .compact()
-        .with_target(false)
-        .finish();
+    let filter = tracing_subscriber::filter::Targets::new()
+        .with_default(Level::DEBUG)
+        .with_target("sqlx", Level::WARN);
 
-    tracing::subscriber::set_global_default(tracing_subscriber).unwrap();
+    let r = tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(false)
+                .fmt_fields(DefaultFields::new()),
+        )
+        .with(filter);
+
+    tracing::subscriber::set_global_default(r).unwrap();
 
     let tempest_core = PgTempestCore::new(configs.dbms.clone(), configs.db_pool.clone())
         .await

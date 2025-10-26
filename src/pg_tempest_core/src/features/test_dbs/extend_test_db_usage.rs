@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+use tracing::{info, instrument, warn};
 
 use crate::{
     PgTempestCore,
@@ -20,6 +21,7 @@ pub enum ExtendTestDbUsageErrorResult {
 }
 
 impl PgTempestCore {
+    #[instrument(skip_all)]
     pub async fn extend_test_db_usage(
         &self,
         template_hash: TemplateHash,
@@ -28,15 +30,18 @@ impl PgTempestCore {
     ) -> Result<ExtendTestDbUsageOkResult, ExtendTestDbUsageErrorResult> {
         self.metadata_storage
             .execute_under_lock(template_hash, |template_metadata| {
-                let Some(template_metadata) = template_metadata else {
+                let Some(template) = template_metadata else {
+                    warn!("Template {template_hash} was not found");
                     return Err(ExtendTestDbUsageErrorResult::TemplateWasNotFound);
                 };
 
-                let Some(test_db) = template_metadata
+                let test_db = template
                     .test_dbs
                     .iter_mut()
-                    .find(|test_db| test_db.id == test_db_id)
-                else {
+                    .find(|test_db| test_db.id == test_db_id);
+
+                let Some(test_db) = test_db else {
+                    warn!("Test db {template_hash} {test_db_id} was not found");
                     return Err(ExtendTestDbUsageErrorResult::TestDbWasNotFound);
                 };
 
@@ -44,10 +49,16 @@ impl PgTempestCore {
                     ref mut usage_deadline,
                 } = test_db.state
                 else {
+                    warn!("Test db {template_hash} {test_db_id} is not used");
                     return Err(ExtendTestDbUsageErrorResult::TestDbIsNotInUse);
                 };
 
                 *usage_deadline = *usage_deadline + additional_time;
+
+                info!(
+                    "Test db {template_hash} {test_db_id} usage deadline was extended by {} ms",
+                    additional_time.as_millis()
+                );
 
                 Ok(ExtendTestDbUsageOkResult {
                     new_usage_deadline: *usage_deadline,
