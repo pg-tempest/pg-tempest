@@ -89,6 +89,8 @@ impl PgTempestCore {
                         template_hash,
                         test_db.id,
                     );
+
+                    template.test_dbs.push(test_db);
                 }
 
                 Ok(TestDbUsageOrReciver::Reciver(reciver))
