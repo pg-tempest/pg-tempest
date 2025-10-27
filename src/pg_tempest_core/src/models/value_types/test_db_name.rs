@@ -25,7 +25,7 @@ pub struct TestDbName {
 
 impl TestDbName {
     pub fn new(template_hash: TemplateHash, test_db_id: TestDbId) -> TestDbName {
-        let identifier = format!("TEMPEST_{template_hash}_TEST_DB_{test_db_id:04X}");
+        let identifier = format!("TEMPEST_{template_hash}_TEST_DB_{test_db_id}");
 
         TestDbName {
             pg_identifier: PgIdentifier::new(identifier).unwrap(),
@@ -45,7 +45,7 @@ impl TryFrom<PgIdentifier> for TestDbName {
             .extract();
 
         let template_hash = TemplateHash::from_str(template_hash)?;
-        let test_db_id = u16::from_str_radix(test_db_id, 16)?;
+        let test_db_id = TestDbId::from_str(test_db_id)?;
 
         Ok(TestDbName {
             pg_identifier: identifier,
@@ -59,6 +59,7 @@ impl TryFrom<PgIdentifier> for TestDbName {
 mod tests {
     use crate::models::value_types::{
         template_hash::{TEMPLATE_HASH_LENGHT, TemplateHash},
+        test_db_id::TestDbId,
         test_db_name::TestDbName,
     };
 
@@ -70,7 +71,8 @@ mod tests {
         }
 
         let template_hash = TemplateHash::new(hash);
-        let test_db_name = TestDbName::new(template_hash, 0x0100);
+        let test_db_id = TestDbId::new(0x0100);
+        let test_db_name = TestDbName::new(template_hash, test_db_id);
 
         assert_eq!(
             test_db_name.to_string(),

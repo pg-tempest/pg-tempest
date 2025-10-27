@@ -23,7 +23,7 @@ pub enum FinishTestDbUsageResponseBody {
     TestDbWasReleased {},
     TemplateWasNotFound {},
     TestDbWasNotFound {},
-    TestDbIsNotInUse {},
+    TestDbIsNotUsed {},
 }
 
 pub async fn finish_test_db_usage(
@@ -47,9 +47,9 @@ pub async fn finish_test_db_usage(
             status_code: StatusCode::NOT_FOUND,
             body: FinishTestDbUsageResponseBody::TestDbWasNotFound {},
         },
-        Err(FinishTestDbUsageErrorResult::TestDbIsNotInUse) => JsonResponse {
+        Err(FinishTestDbUsageErrorResult::TestDbIsNotUsed) => JsonResponse {
             status_code: StatusCode::CONFLICT,
-            body: FinishTestDbUsageResponseBody::TestDbIsNotInUse {},
+            body: FinishTestDbUsageResponseBody::TestDbIsNotUsed {},
         },
     }
 }

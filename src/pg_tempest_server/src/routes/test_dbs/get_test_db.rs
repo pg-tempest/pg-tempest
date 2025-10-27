@@ -15,7 +15,7 @@ use crate::dtos::{db_connection_options_dto::DbConnectionOptionsDto, json_respon
 #[serde(rename_all = "camelCase")]
 pub struct GetTestDbRequestBody {
     pub template_hash: TemplateHash,
-    pub usage_duration_in_seconds: u64,
+    pub usage_duration_ms: u64,
 }
 
 #[derive(Serialize)]
@@ -40,7 +40,7 @@ pub async fn get_test_db(
     let result = tempest_core
         .get_test_db(
             request_body.template_hash,
-            Duration::from_secs(request_body.usage_duration_in_seconds),
+            Duration::from_millis(request_body.usage_duration_ms),
         )
         .await;
 

@@ -11,7 +11,7 @@ use crate::{
 pub enum FinishTestDbUsageErrorResult {
     TemplateWasNotFound,
     TestDbWasNotFound,
-    TestDbIsNotInUse,
+    TestDbIsNotUsed,
 }
 
 impl PgTempestCore {
@@ -40,7 +40,7 @@ impl PgTempestCore {
 
                 if !matches!(test_db.state, TestDbState::InUse { .. }) {
                     warn!("Test db {template_hash} {test_db_id} is not used");
-                    return Err(FinishTestDbUsageErrorResult::TestDbIsNotInUse);
+                    return Err(FinishTestDbUsageErrorResult::TestDbIsNotUsed);
                 }
 
                 test_db.state = TestDbState::Creating;

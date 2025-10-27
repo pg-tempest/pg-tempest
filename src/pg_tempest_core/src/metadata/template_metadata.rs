@@ -16,7 +16,7 @@ pub struct TemplateMetadata {
 impl TemplateMetadata {
     pub fn next_test_db_id(&mut self) -> TestDbId {
         self.test_db_id_sequence += 1;
-        self.test_db_id_sequence
+        TestDbId::new(self.test_db_id_sequence)
     }
 }
 

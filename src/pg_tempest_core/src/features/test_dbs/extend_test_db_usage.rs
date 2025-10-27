@@ -16,7 +16,7 @@ pub struct ExtendTestDbUsageOkResult {
 pub enum ExtendTestDbUsageErrorResult {
     TemplateWasNotFound,
     TestDbWasNotFound,
-    TestDbIsNotInUse,
+    TestDbIsNotUsed,
     TestDbIsCorrupted,
 }
 
@@ -50,7 +50,7 @@ impl PgTempestCore {
                 } = test_db.state
                 else {
                     warn!("Test db {template_hash} {test_db_id} is not used");
-                    return Err(ExtendTestDbUsageErrorResult::TestDbIsNotInUse);
+                    return Err(ExtendTestDbUsageErrorResult::TestDbIsNotUsed);
                 };
 
                 *usage_deadline = *usage_deadline + additional_time;
