@@ -36,4 +36,10 @@ impl MetadataStorage {
 
         action(&mut *template_metadata)
     }
+
+    pub async fn get_all_template_hashes(&self) -> Vec<TemplateHash> {
+        let hash_map = self.template_metadatas_by_template_hash.lock().await;
+
+        hash_map.iter().map(|(hash, _)| *hash).collect()
+    }
 }

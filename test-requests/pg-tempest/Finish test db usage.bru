@@ -1,11 +1,11 @@
 meta {
-  name: Release test db
+  name: Finish test db usage
   type: http
   seq: 7
 }
 
 post {
-  url: http://localhost:8000/test-dbs/release
+  url: http://localhost:8000/api/finish-test-db-usage
   body: json
   auth: inherit
 }
@@ -13,7 +13,7 @@ post {
 body:json {
   {
     "templateHash": "0102030405060708090A0B0C0D0E0F01",
-    "testDbId": 1
+    "testDbId": "0001"
   }
 }
 

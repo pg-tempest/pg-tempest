@@ -7,10 +7,9 @@ use sqlx::{
 };
 
 use crate::{
-    configs::{CoreConfigs, DbmsConfigs},
-    features::{templates::TemplatesFeature, test_dbs::TestDbsFeature},
+    configs::{db_pool_configs::DbPoolConfigs, dbms_configs::DbmsConfigs},
     metadata::metadata_storage::MetadataStorage,
-    utils::clock::SystemClock,
+    utils::clock::{Clock, SystemClock},
 };
 
 pub mod configs;
@@ -21,35 +20,28 @@ pub mod models;
 pub mod utils;
 
 pub struct PgTempestCore {
-    pub templates_feature: Arc<TemplatesFeature>,
-    pub test_dbs_feature: Arc<TestDbsFeature>,
-    pub metadata_storage: Arc<MetadataStorage>,
+    metadata_storage: Arc<MetadataStorage>,
+    dbms_connections_pool: PgPool,
+    clock: Arc<dyn Clock>,
+    dbms_configs: Arc<DbmsConfigs>,
+    db_pool_configs: Arc<DbPoolConfigs>,
 }
 
 impl PgTempestCore {
-    pub async fn new(configs: Arc<CoreConfigs>) -> anyhow::Result<PgTempestCore> {
-        let pg_pool = create_pg_pool(&configs.dbms).await?;
+    pub async fn new(
+        dbms_configs: Arc<DbmsConfigs>,
+        db_pool_configs: Arc<DbPoolConfigs>,
+    ) -> anyhow::Result<PgTempestCore> {
+        let pg_pool = create_pg_pool(&dbms_configs).await?;
         let metadata_storage = Arc::new(MetadataStorage::new());
         let clock = Arc::new(SystemClock);
 
-        let templates_feature = TemplatesFeature::new(
-            metadata_storage.clone(),
-            pg_pool.clone(),
-            clock.clone(),
-            configs.clone(),
-        );
-
-        let test_dbs_feature = TestDbsFeature::new(
-            metadata_storage.clone(),
-            pg_pool.clone(),
-            clock.clone(),
-            configs.clone(),
-        );
-
         Ok(PgTempestCore {
-            templates_feature: Arc::new(templates_feature),
-            test_dbs_feature: Arc::new(test_dbs_feature),
             metadata_storage,
+            dbms_connections_pool: pg_pool,
+            clock,
+            db_pool_configs,
+            dbms_configs,
         })
     }
 }

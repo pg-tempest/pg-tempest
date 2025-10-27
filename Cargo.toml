@@ -9,7 +9,7 @@ members = [
 [workspace.dependencies]
 axum = { version = "0.8.4", features = ["tokio", "json", "macros"] }
 config = { version = "0.15.16", features = ["toml"] }
-tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "sync"] }
 uuid = { version = "1.10.0", features = ["v7", "serde"] }
 serde = { version = "1.0.210", features = ["derive"] }
 async-trait = { version = "0.1.89" }
@@ -24,7 +24,7 @@ sqlx = { version = "0.8.2", features = [
 ] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["json"] }
-tower-http = { version = "0.6.1", features = ["trace"] }
+tower = { version = "0.5.2" }
 derive_more = { version = "2.0.1", features = [
     "as_ref",
     "display",

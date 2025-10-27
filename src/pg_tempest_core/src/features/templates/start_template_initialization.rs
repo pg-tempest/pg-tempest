@@ -1,6 +1,7 @@
+use std::collections::VecDeque;
 use std::time::Duration;
 
-use crate::features::templates::TemplatesFeature;
+use crate::PgTempestCore;
 use crate::metadata::template_metadata::TemplateInitializationState;
 use crate::models::db_connection_options::DbConnectionOptions;
 use crate::models::value_types::template_db_name::TemplateDbName;
@@ -10,6 +11,7 @@ use crate::{
     metadata::template_metadata::TemplateMetadata,
 };
 use chrono::{DateTime, Utc};
+use tracing::{debug, error, info, instrument};
 
 pub enum StartTemplateInitializationOkResult {
     InitializationWasStarted {
@@ -22,25 +24,31 @@ pub enum StartTemplateInitializationOkResult {
     InitializationIsFinished,
 }
 
-impl TemplatesFeature {
+impl PgTempestCore {
+    #[instrument(skip_all)]
     pub async fn start_template_initialization(
         &self,
-        hash: TemplateHash,
+        template_hash: TemplateHash,
         initialization_duration: Duration,
     ) -> anyhow::Result<StartTemplateInitializationOkResult> {
-        let desition = make_decision(self, hash, initialization_duration).await;
+        let desition = make_decision(self, template_hash, initialization_duration).await;
 
         match desition {
             DesitionResult::TemplateInitialized => {
+                debug!("Template {template_hash} is already initialized");
                 Ok(StartTemplateInitializationOkResult::InitializationIsFinished)
             }
             DesitionResult::InProgress {
                 initialization_deadline,
-            } => Ok(
-                StartTemplateInitializationOkResult::InitializationIsInProgress {
-                    initialization_deadline,
-                },
-            ),
+            } => {
+                debug!("Template {template_hash} initialization is in progress");
+
+                Ok(
+                    StartTemplateInitializationOkResult::InitializationIsInProgress {
+                        initialization_deadline,
+                    },
+                )
+            }
             DesitionResult::RestartInitialization {
                 template_database_name,
                 initialization_deadline,
@@ -50,16 +58,22 @@ impl TemplatesFeature {
                         .await;
 
                 match db_creation_result {
-                    Ok(_) => Ok(
-                        StartTemplateInitializationOkResult::InitializationWasStarted {
-                            database_connection_options: DbConnectionOptions::new_outer(
-                                &self.configs.dbms,
-                                template_database_name.into(),
-                            ),
-                            initialization_deadline,
-                        },
-                    ),
+                    Ok(_) => {
+                        info!("Template {template_hash} initialization started");
+
+                        Ok(
+                            StartTemplateInitializationOkResult::InitializationWasStarted {
+                                database_connection_options: DbConnectionOptions::new_outer(
+                                    &self.dbms_configs,
+                                    template_database_name.into(),
+                                ),
+                                initialization_deadline,
+                            },
+                        )
+                    }
                     Err(err) => {
+                        error!("Template {template_hash} initialization failed: {err}");
+
                         mark_as_failed(self, template_database_name.into()).await;
 
                         Err(err)
@@ -71,13 +85,13 @@ impl TemplatesFeature {
 }
 
 async fn make_decision(
-    feature: &TemplatesFeature,
+    tempest_core: &PgTempestCore,
     template_hash: TemplateHash,
     initialization_duration: Duration,
 ) -> DesitionResult {
-    let now = feature.clock.now();
+    let now = tempest_core.clock.now();
 
-    feature
+    tempest_core
         .metadata_storage
         .execute_under_lock(template_hash, |template_metadata| match template_metadata {
             None => {
@@ -89,6 +103,8 @@ async fn make_decision(
                         initialization_deadline,
                     },
                     test_dbs: Vec::new(),
+                    test_db_waiters: VecDeque::new(),
+                    test_db_id_sequence: 0,
                 });
 
                 return DesitionResult::RestartInitialization {
@@ -134,8 +150,8 @@ enum DesitionResult {
     },
 }
 
-async fn mark_as_failed(feature: &TemplatesFeature, template_hash: TemplateHash) {
-    feature
+async fn mark_as_failed(tempest_core: &PgTempestCore, template_hash: TemplateHash) {
+    tempest_core
         .metadata_storage
         .execute_under_lock(template_hash, |template_metadata| {
             if let Some(template_metadata) = template_metadata {

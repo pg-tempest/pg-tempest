@@ -1,11 +1,11 @@
 meta {
-  name: Mark template initialization as failed
+  name: Fail template initialization
   type: http
   seq: 1
 }
 
 post {
-  url: http://localhost:8000/templates/mark-initialization-as-failed
+  url: http://localhost:8000/api/fail-template-initialization
   body: json
   auth: none
 }

@@ -1,13 +1,13 @@
 services:
   pg-tempest:
-    image: pg-tempest:0.1.0-alpha
+    image: pg-tempest:0.2.0
     ports: 
     - 8000:8000
     environment:
-      - PG_TEMPEST_CORE_DBMS_INNER_HOST=db
-      - PG_TEMPEST_CORE_DBMS_INNER_PORT=5432
-      - PG_TEMPEST_CORE_DBMS_OUTER_HOST=localhost
-      - PG_TEMPEST_CORE_DBMS_OUTER_PORT=5433
+      - PG_TEMPEST_DBMS_INNER_HOST=db
+      - PG_TEMPEST_DBMS_INNER_PORT=5432
+      - PG_TEMPEST_DBMS_OUTER_HOST=localhost
+      - PG_TEMPEST_DBMS_OUTER_PORT=5433
 
   db:
     image: postgres

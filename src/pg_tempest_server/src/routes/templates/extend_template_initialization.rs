@@ -3,9 +3,8 @@ use std::{sync::Arc, time::Duration};
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use pg_tempest_core::{
-    features::templates::{
-        TemplatesFeature, extend_template_initialization::ExtendTemplateInitializationErrorResult,
-    },
+    PgTempestCore,
+    features::templates::extend_template_initialization::ExtendTemplateInitializationErrorResult,
     models::value_types::template_hash::TemplateHash,
 };
 use serde::{Deserialize, Serialize};
@@ -16,7 +15,7 @@ use crate::dtos::json_response::JsonResponse;
 #[serde(rename_all = "camelCase")]
 pub struct ExtendTemplateInitializationRequestBody {
     template_hash: TemplateHash,
-    additional_time: Duration,
+    additional_time_ms: u64,
 }
 
 #[derive(Serialize)]
@@ -31,11 +30,14 @@ pub enum ExtendTemplateInitializationResponseBody {
 }
 
 pub async fn extend_template_initialization(
-    State(feature): State<Arc<TemplatesFeature>>,
+    State(tempest_core): State<Arc<PgTempestCore>>,
     Json(request_body): Json<ExtendTemplateInitializationRequestBody>,
 ) -> JsonResponse<ExtendTemplateInitializationResponseBody> {
-    let result = feature
-        .extend_template_initialization(request_body.template_hash, request_body.additional_time)
+    let result = tempest_core
+        .extend_template_initialization(
+            request_body.template_hash,
+            Duration::from_millis(request_body.additional_time_ms),
+        )
         .await;
 
     match result {

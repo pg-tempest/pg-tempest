@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: http://localhost:8000/templates/start-initialization
+  url: http://localhost:8000/api/start-template-initialization
   body: json
   auth: inherit
 }
@@ -13,10 +13,11 @@ post {
 body:json {
   {
     "templateHash": "0102030405060708090A0B0C0D0E0F01",
-    "initializationDurationInSeconds": 20
+    "initializationDurationMs": 2000
   }
 }
 
 settings {
   encodeUrl: true
+  timeout: 0
 }

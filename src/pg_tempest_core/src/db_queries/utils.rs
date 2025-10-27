@@ -1,7 +1,9 @@
-﻿use sqlx::error::DatabaseError;
+use sqlx::error::DatabaseError;
 
 pub fn has_code(db_error: impl AsRef<dyn DatabaseError>, expected_code: impl AsRef<str>) -> bool {
-    db_error.as_ref().code()
+    db_error
+        .as_ref()
+        .code()
         .map(|code| code.as_ref() == expected_code.as_ref())
         .unwrap_or(false)
 }
