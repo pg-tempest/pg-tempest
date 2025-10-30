@@ -1,6 +1,6 @@
 services:
   pg-tempest:
-    image: pg-tempest:0.2.0
+    image: rudomitori/pg-tempest:0.2.0
     ports: 
     - 8000:8000
     environment:
@@ -12,8 +12,10 @@ services:
   db:
     image: postgres
     restart: always
-    shm_size: 128mb
     ports:
       - 5433:5432
     environment:
       POSTGRES_PASSWORD: postgres
+    # For testing purpose we can disable fsync, synchronous_commit, full_page_writes
+    # and get a major speed up (~30%)
+    command: "postgres -c 'fsync=off' -c 'synchronous_commit=off' -c 'full_page_writes=off'"
