@@ -1,6 +1,7 @@
 services:
   pg-tempest:
     image: rudomitori/pg-tempest:0.2.0
+    restart: always
     ports: 
     - 8000:8000
     environment:
@@ -8,6 +9,9 @@ services:
       - PG_TEMPEST_DBMS_INNER_PORT=5432
       - PG_TEMPEST_DBMS_OUTER_HOST=localhost
       - PG_TEMPEST_DBMS_OUTER_PORT=5433
+    depends_on:
+      - db
+    
 
   db:
     image: postgres
