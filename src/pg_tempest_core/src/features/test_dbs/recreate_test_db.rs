@@ -44,14 +44,14 @@ impl PgTempestCore {
                     bail!("Failed to create {test_db_name}");
                 }
 
-                while let Some(test_db_waiter) = template.test_db_waiters.pop_front() {
-                    let usage_deadline = self.clock.now() + test_db_waiter.usage_duration;
+                while let Some(test_db_awaiter) = template.test_db_awaiters.pop_front() {
+                    let usage_deadline = self.clock.now() + test_db_awaiter.usage_duration;
                     let usage = TestDbUsage {
                         test_db_id,
                         deadline: usage_deadline,
                     };
 
-                    if let Ok(_) = test_db_waiter.readines_sender.send(usage) {
+                    if let Ok(_) = test_db_awaiter.readines_sender.send(usage) {
                         test_db.state = TestDbState::InUse { usage_deadline };
                         return Ok(());
                     }

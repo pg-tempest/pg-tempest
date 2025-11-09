@@ -7,7 +7,7 @@ use tracing::{debug, info, instrument, warn};
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{
-        TemplateInitializationState, TestDbMetadata, TestDbState, TestDbUsage, TestDbWaiter,
+        TemplateInitializationState, TestDbAwaiter, TestDbMetadata, TestDbState, TestDbUsage,
     },
     models::{
         db_connection_options::DbConnectionOptions,
@@ -76,20 +76,20 @@ impl PgTempestCore {
                 debug!("Ready test db {template_hash} was not found in pool");
 
                 let (sender, reciver) = oneshot::channel();
-                let waiter = TestDbWaiter {
+                let awaiter = TestDbAwaiter {
                     usage_duration,
                     readines_sender: sender,
                 };
-                template.test_db_waiters.push_back(waiter);
+                template.test_db_awaiters.push_back(awaiter);
 
                 let test_dbs_in_creation = template
                     .test_dbs
                     .iter()
                     .filter(|x| matches!(x.state, TestDbState::Creating))
                     .count();
-                let waiter_count = template.test_db_waiters.len();
+                let awaiters_count = template.test_db_awaiters.len();
 
-                if waiter_count > test_dbs_in_creation {
+                if awaiters_count > test_dbs_in_creation {
                     let test_db_id = template.next_test_db_id();
                     let test_db = TestDbMetadata {
                         id: test_db_id,

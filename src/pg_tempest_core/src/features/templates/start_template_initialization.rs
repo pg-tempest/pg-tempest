@@ -102,7 +102,7 @@ async fn make_decision(
                         initialization_deadline,
                     },
                     test_dbs: Vec::new(),
-                    test_db_waiters: VecDeque::new(),
+                    test_db_awaiters: VecDeque::new(),
                     test_db_id_sequence: 0,
                 });
 

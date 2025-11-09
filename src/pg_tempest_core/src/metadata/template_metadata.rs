@@ -9,7 +9,7 @@ pub struct TemplateMetadata {
     pub template_hash: TemplateHash,
     pub initialization_state: TemplateInitializationState,
     pub test_dbs: Vec<TestDbMetadata>,
-    pub test_db_waiters: VecDeque<TestDbWaiter>,
+    pub test_db_awaiters: VecDeque<TestDbAwaiter>,
     pub test_db_id_sequence: u16,
 }
 
@@ -40,7 +40,7 @@ pub enum TestDbState {
     InUse { usage_deadline: DateTime<Utc> },
 }
 
-pub struct TestDbWaiter {
+pub struct TestDbAwaiter {
     pub usage_duration: Duration,
     pub readines_sender: oneshot::Sender<TestDbUsage>,
 }
