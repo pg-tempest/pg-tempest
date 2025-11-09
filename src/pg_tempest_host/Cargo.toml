@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 serde = { workspace = true }
 pg_tempest_core = { path = "../pg_tempest_core" }
+pg_tempest_pg_client = { path = "../pg_tempest_pg_client" }
 pg_tempest_server = { path = "../pg_tempest_server" }
 config = { workspace = true }
 tokio = { workspace = true }

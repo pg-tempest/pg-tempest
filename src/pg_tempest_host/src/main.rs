@@ -1,6 +1,7 @@
 use std::{error::Error, sync::Arc};
 
 use pg_tempest_core::PgTempestCore;
+use pg_tempest_pg_client::pg_client_impl::PgClientImpl;
 use pg_tempest_server::Server;
 
 use crate::{configs::build_app_configs, logging::setup_logging};
@@ -14,9 +15,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     setup_logging(configs.logging.clone())?;
 
-    let tempest_core = PgTempestCore::new(configs.dbms.clone(), configs.db_pool.clone()).await?;
+    let pg_client = Arc::new(PgClientImpl::new(configs.dbms.clone()).await?);
 
-    let tempest_core = Arc::new(tempest_core);
+    let tempest_core = Arc::new(
+        PgTempestCore::new(pg_client, configs.dbms.clone(), configs.db_pool.clone()).await?,
+    );
 
     let server = Server::new(tempest_core.clone(), configs.server.clone());
 

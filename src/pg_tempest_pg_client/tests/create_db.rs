@@ -1,7 +1,10 @@
-use crate::db_queries::create_db::{CreateDatabaseError, create_db};
-use crate::db_queries::tests::common;
-use crate::models::value_types::pg_identifier::PgIdentifier;
+use pg_tempest_core::{
+    models::value_types::pg_identifier::PgIdentifier,
+    pg_client::{CreateDatabaseError, PgClient},
+};
 use testcontainers::runners::AsyncRunner;
+
+mod common;
 
 #[tokio::test]
 async fn db_double_creation() {
@@ -10,12 +13,12 @@ async fn db_double_creation() {
         .await
         .unwrap();
 
-    let pool = common::create_pg_pool(&postgresql_container).await;
+    let client = common::create_pg_client(&postgresql_container).await;
 
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // First creation
-    let result = create_db(&pool, &db_name, false).await;
+    let result = client.create_db(&db_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -23,7 +26,7 @@ async fn db_double_creation() {
     }
 
     // Second creation
-    let result = create_db(&pool, &db_name, false).await;
+    let result = client.create_db(&db_name, false).await;
 
     assert! {
         matches!(result, Err(CreateDatabaseError::DbAlreadyExists {..})),

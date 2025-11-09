@@ -1,10 +1,10 @@
-use crate::db_queries::create_db::create_db;
-use crate::db_queries::create_db_with_template::{
-    CreateDbWithTemplateError, create_db_with_template,
+use pg_tempest_core::{
+    models::value_types::pg_identifier::PgIdentifier,
+    pg_client::{CreateDbWithTemplateError, PgClient},
 };
-use crate::db_queries::tests::common;
-use crate::models::value_types::pg_identifier::PgIdentifier;
 use testcontainers::runners::AsyncRunner;
+
+mod common;
 
 #[tokio::test]
 async fn db_double_creation() {
@@ -13,13 +13,13 @@ async fn db_double_creation() {
         .await
         .unwrap();
 
-    let pool = common::create_pg_pool(&postgresql_container).await;
+    let client = common::create_pg_client(&postgresql_container).await;
 
     let template_name = PgIdentifier::new("test_template").unwrap();
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // Template creation
-    let result = create_db(&pool, &template_name, false).await;
+    let result = client.create_db(&template_name, false).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -27,7 +27,9 @@ async fn db_double_creation() {
     }
 
     // First creation
-    let result = create_db_with_template(&pool, &db_name, &template_name).await;
+    let result = client
+        .create_db_with_template(&db_name, &template_name)
+        .await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -35,7 +37,9 @@ async fn db_double_creation() {
     }
 
     // Second creation
-    let result = create_db_with_template(&pool, &db_name, &template_name).await;
+    let result = client
+        .create_db_with_template(&db_name, &template_name)
+        .await;
 
     assert! {
         matches!(result, Err(CreateDbWithTemplateError::DbAlreadyExists {..})),
@@ -50,12 +54,14 @@ async fn template_doesnt_exists() {
         .await
         .unwrap();
 
-    let pool = common::create_pg_pool(&postgresql_container).await;
+    let client = common::create_pg_client(&postgresql_container).await;
 
     let template_name = PgIdentifier::new("test_template").unwrap();
     let db_name = PgIdentifier::new("test_database").unwrap();
 
-    let result = create_db_with_template(&pool, &db_name, &template_name).await;
+    let result = client
+        .create_db_with_template(&db_name, &template_name)
+        .await;
 
     assert! {
         matches!(result, Err(CreateDbWithTemplateError::TemplateDoesntExist {..})),

@@ -3,13 +3,11 @@ use std::time::Duration;
 
 use crate::PgTempestCore;
 use crate::metadata::template_metadata::TemplateInitializationState;
+use crate::metadata::template_metadata::TemplateMetadata;
 use crate::models::db_connection_options::DbConnectionOptions;
 use crate::models::value_types::template_db_name::TemplateDbName;
 use crate::models::value_types::template_hash::TemplateHash;
-use crate::{
-    db_queries::recreate_template_db::recreate_template_db,
-    metadata::template_metadata::TemplateMetadata,
-};
+use crate::pg_client_extensions::PgClientExtensions;
 use chrono::{DateTime, Utc};
 use tracing::{debug, error, info, instrument};
 
@@ -53,9 +51,10 @@ impl PgTempestCore {
                 template_database_name,
                 initialization_deadline,
             } => {
-                let db_creation_result =
-                    recreate_template_db(&self.dbms_connections_pool, &template_database_name)
-                        .await;
+                let db_creation_result = self
+                    .pg_client
+                    .recreate_template_db(&template_database_name)
+                    .await;
 
                 match db_creation_result {
                     Ok(_) => {

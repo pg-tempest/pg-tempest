@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use crate::{
     PgTempestCore,
-    db_queries::recreate_test_db::recreate_test_db,
     metadata::template_metadata::{TestDbState, TestDbUsage},
     models::value_types::{
         template_db_name::TemplateDbName, template_hash::TemplateHash, test_db_id::TestDbId,
         test_db_name::TestDbName,
     },
+    pg_client_extensions::PgClientExtensions,
 };
 use anyhow::{anyhow, bail};
 use tracing::{debug, error, instrument};
@@ -21,12 +21,10 @@ impl PgTempestCore {
     ) {
         let test_db_name = TestDbName::new(template_hash, test_db_id);
 
-        let db_creation_result = recreate_test_db(
-            &self.dbms_connections_pool,
-            &test_db_name,
-            &TemplateDbName::new(template_hash),
-        )
-        .await;
+        let db_creation_result = self
+            .pg_client
+            .recreate_test_db(&test_db_name, &TemplateDbName::new(template_hash))
+            .await;
 
         let result = self
             .metadata_storage
