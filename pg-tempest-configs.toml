@@ -15,3 +15,8 @@ port = 5432
 min_size = 10
 creation_retries_delay_in_ms = 100
 
+[logging]
+server = "Info"
+core = "Info"
+db_queries = "Info"
+

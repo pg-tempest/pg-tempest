@@ -1,4 +1,4 @@
-use std::{net::SocketAddrV4, sync::Arc};
+use std::{error::Error, net::SocketAddrV4, sync::Arc};
 
 use axum::Router;
 use pg_tempest_core::PgTempestCore;
@@ -30,15 +30,15 @@ impl Server {
         Server { router, configs }
     }
 
-    pub async fn start(self) {
+    pub async fn start(self) -> Result<(), Box<dyn Error>> {
         let socket_addr = SocketAddrV4::new(self.configs.ipv4, self.configs.port);
 
         tracing::info!("Starting server on {socket_addr}");
 
-        let tcp_listener = TcpListener::bind(socket_addr).await.unwrap();
+        let tcp_listener = TcpListener::bind(socket_addr).await?;
 
-        axum::serve(tcp_listener, self.router.into_make_service())
-            .await
-            .unwrap();
+        axum::serve(tcp_listener, self.router.into_make_service()).await?;
+
+        Ok(())
     }
 }

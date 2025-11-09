@@ -1581,7 +1581,9 @@ dependencies = [
 name = "pg-tempest"
 version = "0.2.0"
 dependencies = [
+ "anyhow",
  "config",
+ "derive_more",
  "pg_tempest_core",
  "pg_tempest_server",
  "serde",

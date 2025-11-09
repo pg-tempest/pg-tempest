@@ -5,12 +5,16 @@ use pg_tempest_core::configs::{db_pool_configs::DbPoolConfigs, dbms_configs::Dbm
 use pg_tempest_server::configs::ServerConfigs;
 use serde::Deserialize;
 
+use crate::logging::configs::LoggingConfigs;
+
 #[derive(Deserialize)]
 pub struct AppConfigs {
     pub dbms: Arc<DbmsConfigs>,
     #[serde(default)]
     pub db_pool: Arc<DbPoolConfigs>,
     pub server: Arc<ServerConfigs>,
+    #[serde(default)]
+    pub logging: Arc<LoggingConfigs>,
 }
 
 pub fn build_app_configs() -> Result<Arc<AppConfigs>, ConfigError> {
