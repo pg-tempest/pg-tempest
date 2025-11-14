@@ -3,7 +3,6 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct DbmsConfigs {
     pub inner: InnerDbmsConfigs,
-    #[serde(default)]
     pub outer: OuterDbmsConfigs,
     pub database: Box<str>,
     pub user: Box<str>,
@@ -16,7 +15,7 @@ pub struct InnerDbmsConfigs {
     pub port: u16,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
 pub struct OuterDbmsConfigs {
     pub host: Option<Box<str>>,
     pub port: Option<u16>,

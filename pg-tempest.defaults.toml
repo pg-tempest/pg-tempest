@@ -11,6 +11,10 @@ password = "postgres"
 host = "localhost"
 port = 5432
 
+[dbms.outer]
+#host =
+#port =
+
 [db_pool]
 min_size = 10
 creation_retries_delay_in_ms = 100

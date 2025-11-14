@@ -6,7 +6,8 @@ RUN cargo build -r
 
 FROM alpine:3.22.2
 WORKDIR /pg-tempest
-COPY ./pg-tempest-configs.docker.toml ./pg-tempest-configs.toml
+COPY pg-tempest.defaults.toml ./pg-tempest.defaults.toml
 COPY --from=builder /usr/src/pg-tempest/target/release/pg-tempest .
 EXPOSE 8000
+ENV PG_TEMPEST_SERVER_IPV4=0.0.0.0
 CMD ["./pg-tempest"]
