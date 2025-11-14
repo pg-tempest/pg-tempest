@@ -16,6 +16,7 @@ pub enum ExtendTemplateInitializationErrorResult {
     TemplateWasNotFound,
     InitializationIsFinished,
     InitializationIsFailed,
+    InitializationIsNotStarted,
 }
 
 impl PgTempestCore {
@@ -35,13 +36,18 @@ impl PgTempestCore {
                 let initialization_state = &mut template_metadata.initialization_state;
 
                 match initialization_state {
-                    TemplateInitializationState::Done => {
+                    TemplateInitializationState::Finished => {
                         warn!("Template {template_hash} initialization is already finished");
                         Err(ExtendTemplateInitializationErrorResult::InitializationIsFinished)
                     }
                     TemplateInitializationState::Failed => {
                         warn!("Template {template_hash} initialization is already failed");
                         Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed)
+                    }
+                    TemplateInitializationState::Created
+                    | TemplateInitializationState::Creating => {
+                        warn!("Template {template_hash} initialization is not started");
+                        Err(ExtendTemplateInitializationErrorResult::InitializationIsNotStarted)
                     }
                     TemplateInitializationState::InProgress {
                         initialization_deadline,

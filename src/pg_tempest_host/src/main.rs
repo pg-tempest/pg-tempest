@@ -18,12 +18,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pg_client = Arc::new(PgClientImpl::new(configs.dbms.clone()).await?);
 
     let tempest_core = Arc::new(
-        PgTempestCore::new(pg_client, configs.dbms.clone(), configs.db_pool.clone()).await?,
+        PgTempestCore::new(
+            pg_client,
+            configs.dbms.clone(),
+            configs.db_pool.clone(),
+            configs.template_initialization.clone(),
+        )
+        .await?,
     );
 
     let server = Server::new(tempest_core.clone(), configs.server.clone());
 
-    tempest_core.start_test_db_creation_retries_in_background();
+    tempest_core.clone().start_test_db_creation_retries_in_background();
+    tempest_core.start_template_initialization_deadline_handling();
+    
     server.start().await?;
 
     Ok(())

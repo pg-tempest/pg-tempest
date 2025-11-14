@@ -8,6 +8,7 @@ use crate::models::value_types::{template_hash::TemplateHash, test_db_id::TestDb
 pub struct TemplateMetadata {
     pub template_hash: TemplateHash,
     pub initialization_state: TemplateInitializationState,
+    pub template_awaiters: VecDeque<TemplateAwaiter>,
     pub test_dbs: Vec<TestDbMetadata>,
     pub test_db_awaiters: VecDeque<TestDbAwaiter>,
     pub test_db_id_sequence: u16,
@@ -21,11 +22,28 @@ impl TemplateMetadata {
 }
 
 pub enum TemplateInitializationState {
+    Creating,
+    Created,
     InProgress {
         initialization_deadline: DateTime<Utc>,
     },
-    Done,
+    Finished,
     Failed,
+}
+
+pub struct TemplateAwaiter {
+    pub initialization_duration: Duration,
+    pub result_sender: oneshot::Sender<TemplateAwaitingResult>,
+}
+
+pub enum TemplateAwaitingResult {
+    InitializationIsStarted {
+        initialization_deadline: DateTime<Utc>,
+    },
+    InitializationIsInProgress,
+    InitializationIsFinished,
+    InitializationIsFailed,
+    FailedToCreateTemplateDb,
 }
 
 pub struct TestDbMetadata {

@@ -1,4 +1,6 @@
 pub mod extend_template_initialization;
 pub mod fail_template_initialization;
 pub mod finish_template_initialization;
+mod recreate_template_db;
 pub mod start_template_initialization;
+mod template_initialization_deadline_processing;

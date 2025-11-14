@@ -25,6 +25,7 @@ pub enum ExtendTemplateInitializationResponseBody {
         new_initialization_deadline: DateTime<Utc>,
     },
     TemplateWasNotFound {},
+    InitializationIsNotStarted {},
     InitializationIsFinished {},
     InitializationIsFailed {},
 }
@@ -58,6 +59,10 @@ pub async fn extend_template_initialization(
         Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed) => JsonResponse {
             status_code: StatusCode::CONFLICT,
             body: ExtendTemplateInitializationResponseBody::InitializationIsFailed {},
+        },
+        Err(ExtendTemplateInitializationErrorResult::InitializationIsNotStarted) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: ExtendTemplateInitializationResponseBody::InitializationIsNotStarted {},
         },
     }
 }

@@ -1,161 +1,159 @@
 use std::collections::VecDeque;
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::PgTempestCore;
+use crate::metadata::template_metadata::TemplateAwaiter;
+use crate::metadata::template_metadata::TemplateAwaitingResult;
 use crate::metadata::template_metadata::TemplateInitializationState;
 use crate::metadata::template_metadata::TemplateMetadata;
 use crate::models::db_connection_options::DbConnectionOptions;
 use crate::models::value_types::template_db_name::TemplateDbName;
 use crate::models::value_types::template_hash::TemplateHash;
-use crate::pg_client_extensions::PgClientExtensions;
+use anyhow::anyhow;
 use chrono::{DateTime, Utc};
-use tracing::{debug, error, info, instrument};
+use tokio::select;
+use tokio::sync::oneshot;
+use tokio::time::sleep;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::instrument;
 
-pub enum StartTemplateInitializationOkResult {
+pub enum StartTemplateInitializationResult {
     InitializationWasStarted {
         database_connection_options: DbConnectionOptions,
         initialization_deadline: DateTime<Utc>,
     },
-    InitializationIsInProgress {
-        initialization_deadline: DateTime<Utc>,
-    },
+    InitializationIsInProgress,
     InitializationIsFinished,
+    InitializationIsFailed,
 }
 
 impl PgTempestCore {
     #[instrument(skip_all)]
     pub async fn start_template_initialization(
-        &self,
+        self: Arc<Self>,
         template_hash: TemplateHash,
         initialization_duration: Duration,
-    ) -> anyhow::Result<StartTemplateInitializationOkResult> {
-        let desition = make_decision(self, template_hash, initialization_duration).await;
+    ) -> anyhow::Result<StartTemplateInitializationResult> {
+        let result_receiver: oneshot::Receiver<TemplateAwaitingResult> = self
+            .metadata_storage
+            .execute_under_lock(template_hash, |template| {
+                let (result_sender, result_receiver) = oneshot::channel::<TemplateAwaitingResult>();
 
-        match desition {
-            DesitionResult::TemplateInitialized => {
-                debug!("Template {template_hash} is already initialized");
-                Ok(StartTemplateInitializationOkResult::InitializationIsFinished)
+                let Some(template) = template else {
+                    let mut template_awaiters = VecDeque::new();
+                    template_awaiters.push_back(TemplateAwaiter {
+                        initialization_duration,
+                        result_sender,
+                    });
+
+                    *template = Some(TemplateMetadata {
+                        template_hash,
+                        initialization_state: TemplateInitializationState::Creating,
+                        template_awaiters,
+                        test_dbs: Vec::new(),
+                        test_db_awaiters: VecDeque::new(),
+                        test_db_id_sequence: 0,
+                    });
+
+                    tokio::spawn(self.clone().recreate_template_db(template_hash));
+
+                    return result_receiver;
+                };
+
+                let initialization_state = &mut template.initialization_state;
+
+                match initialization_state {
+                    TemplateInitializationState::Created => {
+                        let initialization_deadline = self.clock.now() + initialization_duration;
+
+                        if let Ok(_) =
+                            result_sender.send(TemplateAwaitingResult::InitializationIsStarted {
+                                initialization_deadline,
+                            })
+                        {
+                            *initialization_state = TemplateInitializationState::InProgress {
+                                initialization_deadline,
+                            };
+                        };
+                    }
+                    TemplateInitializationState::Creating
+                    | TemplateInitializationState::InProgress { .. } => {
+                        template.template_awaiters.push_back(TemplateAwaiter {
+                            initialization_duration,
+                            result_sender,
+                        });
+                    }
+                    TemplateInitializationState::Finished => {
+                        let _ =
+                            result_sender.send(TemplateAwaitingResult::InitializationIsFinished);
+                    }
+                    TemplateInitializationState::Failed => {
+                        *initialization_state = TemplateInitializationState::Creating;
+
+                        template.template_awaiters.push_back(TemplateAwaiter {
+                            initialization_duration,
+                            result_sender,
+                        });
+
+                        tokio::spawn(self.clone().recreate_template_db(template_hash));
+                    }
+                };
+
+                result_receiver
+            })
+            .await;
+
+        let long_polling_timeout =
+            Duration::from_millis(self.template_initialization_configs.long_polling_timeout_ms);
+
+        let awaiting_result = select! {
+            _ = sleep(long_polling_timeout) => {
+                return Ok(StartTemplateInitializationResult::InitializationIsInProgress)
             }
-            DesitionResult::InProgress {
+            awaiting_result = result_receiver => { awaiting_result }
+        };
+
+        // TODO: Remove unwrap
+        match awaiting_result.unwrap() {
+            TemplateAwaitingResult::InitializationIsStarted {
                 initialization_deadline,
             } => {
-                debug!("Template {template_hash} initialization is in progress");
+                info!("Template {template_hash} initialization was started");
+                let template_db_name = TemplateDbName::new(template_hash);
 
                 Ok(
-                    StartTemplateInitializationOkResult::InitializationIsInProgress {
+                    StartTemplateInitializationResult::InitializationWasStarted {
+                        database_connection_options: DbConnectionOptions::new_outer(
+                            &self.dbms_configs,
+                            template_db_name.into(),
+                        ),
                         initialization_deadline,
                     },
                 )
             }
-            DesitionResult::RestartInitialization {
-                template_database_name,
-                initialization_deadline,
-            } => {
-                let db_creation_result = self
-                    .pg_client
-                    .recreate_template_db(&template_database_name)
-                    .await;
+            TemplateAwaitingResult::InitializationIsInProgress => {
+                debug!("Template {template_hash} initialization is already in progress");
 
-                match db_creation_result {
-                    Ok(_) => {
-                        info!("Template {template_hash} initialization started");
+                Ok(StartTemplateInitializationResult::InitializationIsInProgress)
+            }
+            TemplateAwaitingResult::InitializationIsFinished => {
+                debug!("Template {template_hash} initialization is already finished");
 
-                        Ok(
-                            StartTemplateInitializationOkResult::InitializationWasStarted {
-                                database_connection_options: DbConnectionOptions::new_outer(
-                                    &self.dbms_configs,
-                                    template_database_name.into(),
-                                ),
-                                initialization_deadline,
-                            },
-                        )
-                    }
-                    Err(err) => {
-                        error!("Template {template_hash} initialization failed: {err}");
+                Ok(StartTemplateInitializationResult::InitializationIsFinished)
+            }
+            TemplateAwaitingResult::InitializationIsFailed => {
+                info!("Template {template_hash} initialization was failed");
 
-                        mark_as_failed(self, template_database_name.into()).await;
+                Ok(StartTemplateInitializationResult::InitializationIsFailed)
+            }
+            TemplateAwaitingResult::FailedToCreateTemplateDb => {
+                error!("Template db {template_hash} creation was failed");
 
-                        Err(err)
-                    }
-                }
+                Err(anyhow!("Template db {template_hash} creation was failed"))
             }
         }
     }
-}
-
-async fn make_decision(
-    tempest_core: &PgTempestCore,
-    template_hash: TemplateHash,
-    initialization_duration: Duration,
-) -> DesitionResult {
-    let now = tempest_core.clock.now();
-
-    tempest_core
-        .metadata_storage
-        .execute_under_lock(template_hash, |template_metadata| match template_metadata {
-            None => {
-                let initialization_deadline = now + initialization_duration;
-
-                *template_metadata = Some(TemplateMetadata {
-                    template_hash,
-                    initialization_state: TemplateInitializationState::InProgress {
-                        initialization_deadline,
-                    },
-                    test_dbs: Vec::new(),
-                    test_db_awaiters: VecDeque::new(),
-                    test_db_id_sequence: 0,
-                });
-
-                return DesitionResult::RestartInitialization {
-                    template_database_name: TemplateDbName::new(template_hash),
-                    initialization_deadline,
-                };
-            }
-            Some(template_metadata) => match template_metadata.initialization_state {
-                TemplateInitializationState::Done => DesitionResult::TemplateInitialized,
-                TemplateInitializationState::InProgress {
-                    initialization_deadline,
-                } if initialization_deadline > now => DesitionResult::InProgress {
-                    initialization_deadline,
-                },
-                TemplateInitializationState::Failed
-                | TemplateInitializationState::InProgress { .. } => {
-                    let initialization_deadline = now + initialization_duration;
-                    let template_database_name = TemplateDbName::new(template_hash);
-
-                    template_metadata.initialization_state =
-                        TemplateInitializationState::InProgress {
-                            initialization_deadline,
-                        };
-
-                    DesitionResult::RestartInitialization {
-                        template_database_name,
-                        initialization_deadline,
-                    }
-                }
-            },
-        })
-        .await
-}
-
-enum DesitionResult {
-    TemplateInitialized,
-    RestartInitialization {
-        template_database_name: TemplateDbName,
-        initialization_deadline: DateTime<Utc>,
-    },
-    InProgress {
-        initialization_deadline: DateTime<Utc>,
-    },
-}
-
-async fn mark_as_failed(tempest_core: &PgTempestCore, template_hash: TemplateHash) {
-    tempest_core
-        .metadata_storage
-        .execute_under_lock(template_hash, |template_metadata| {
-            if let Some(template_metadata) = template_metadata {
-                template_metadata.initialization_state = TemplateInitializationState::Failed
-            }
-        })
-        .await
 }

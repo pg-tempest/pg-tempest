@@ -4,7 +4,7 @@ use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use pg_tempest_core::{
     PgTempestCore,
-    features::templates::start_template_initialization::StartTemplateInitializationOkResult,
+    features::templates::start_template_initialization::StartTemplateInitializationResult,
     models::value_types::template_hash::TemplateHash,
 };
 use serde::{Deserialize, Serialize};
@@ -25,10 +25,9 @@ pub enum StartTemplateInitializationResponseBody {
         database_connection_options: DbConnectionOptionsDto,
         initialization_deadline: DateTime<Utc>,
     },
-    InitializationIsInProgress {
-        initialization_deadline: DateTime<Utc>,
-    },
+    InitializationIsInProgress {},
     InitializationIsFinished {},
+    InitializationIsFailed {},
     UnexpectedError {
         message: Box<str>,
     },
@@ -46,7 +45,7 @@ pub async fn start_template_initialization(
         .await;
 
     match result {
-        Ok(StartTemplateInitializationOkResult::InitializationWasStarted {
+        Ok(StartTemplateInitializationResult::InitializationWasStarted {
             database_connection_options,
             initialization_deadline,
         }) => JsonResponse {
@@ -56,17 +55,17 @@ pub async fn start_template_initialization(
                 initialization_deadline,
             },
         },
-        Ok(StartTemplateInitializationOkResult::InitializationIsInProgress {
-            initialization_deadline,
-        }) => JsonResponse {
+        Ok(StartTemplateInitializationResult::InitializationIsInProgress) => JsonResponse {
             status_code: StatusCode::OK,
-            body: StartTemplateInitializationResponseBody::InitializationIsInProgress {
-                initialization_deadline,
-            },
+            body: StartTemplateInitializationResponseBody::InitializationIsInProgress {},
         },
-        Ok(StartTemplateInitializationOkResult::InitializationIsFinished) => JsonResponse {
+        Ok(StartTemplateInitializationResult::InitializationIsFinished) => JsonResponse {
             status_code: StatusCode::OK,
             body: StartTemplateInitializationResponseBody::InitializationIsFinished {},
+        },
+        Ok(StartTemplateInitializationResult::InitializationIsFailed) => JsonResponse {
+            status_code: StatusCode::OK,
+            body: StartTemplateInitializationResponseBody::InitializationIsFailed {},
         },
         Err(err) => JsonResponse {
             status_code: StatusCode::INTERNAL_SERVER_ERROR,

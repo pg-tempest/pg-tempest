@@ -21,6 +21,7 @@ pub struct FailTemplateInitializationRequestBody {
 pub enum FailTemplateInitializationResponseBody {
     InitializationIsFailed {},
     TemplateWasNotFound {},
+    InitializationIsNotStarted {},
     InitializationIsFinished {},
 }
 
@@ -37,7 +38,7 @@ pub async fn fail_template_initialization(
             status_code: StatusCode::OK,
             body: FailTemplateInitializationResponseBody::InitializationIsFailed {},
         },
-        Err(FailTemplateInitializationErrorResult::TemplateIsInitialized) => JsonResponse {
+        Err(FailTemplateInitializationErrorResult::InitializationIsFinished) => JsonResponse {
             status_code: StatusCode::CONFLICT,
             body: FailTemplateInitializationResponseBody::InitializationIsFinished {},
         },
@@ -45,5 +46,9 @@ pub async fn fail_template_initialization(
             status_code: StatusCode::NOT_FOUND,
             body: FailTemplateInitializationResponseBody::TemplateWasNotFound {},
         },
+        Err(FailTemplateInitializationErrorResult::InitializationIsNotStarted) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: FailTemplateInitializationResponseBody::InitializationIsNotStarted {},
+        }
     }
 }

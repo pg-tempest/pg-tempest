@@ -4,7 +4,7 @@ use config::{Config, ConfigError};
 use pg_tempest_core::configs::{db_pool_configs::DbPoolConfigs, dbms_configs::DbmsConfigs};
 use pg_tempest_server::configs::ServerConfigs;
 use serde::Deserialize;
-
+use pg_tempest_core::configs::template_initialization_configs::TemplateInitializationConfigs;
 use crate::logging::configs::LoggingConfigs;
 
 #[derive(Deserialize)]
@@ -15,6 +15,7 @@ pub struct AppConfigs {
     pub server: Arc<ServerConfigs>,
     #[serde(default)]
     pub logging: Arc<LoggingConfigs>,
+    pub template_initialization: Arc<TemplateInitializationConfigs>
 }
 
 pub fn build_app_configs() -> Result<Arc<AppConfigs>, ConfigError> {

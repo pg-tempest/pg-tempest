@@ -36,7 +36,7 @@ impl PgTempestCore {
         template_hash: TemplateHash,
         usage_duration: Duration,
     ) -> Result<GetTestDbOkResult, GetTestDbErrorResult> {
-        let test_db_usage_or_reciver: TestDbUsageOrReciver = self
+        let test_db_usage_or_reciver: TestDbUsageOrReceiver = self
             .metadata_storage
             .execute_under_lock(template_hash, |template| {
                 let Some(template) = template else {
@@ -46,7 +46,7 @@ impl PgTempestCore {
 
                 if !matches!(
                     template.initialization_state,
-                    TemplateInitializationState::Done
+                    TemplateInitializationState::Finished
                 ) {
                     warn!("Template {template_hash} initialization is not finished");
                     return Err(GetTestDbErrorResult::TemplateIsNotInitalized);
@@ -70,7 +70,7 @@ impl PgTempestCore {
 
                     debug!("Ready test db {template_hash} {test_db_id} was get from pool");
 
-                    return Ok(TestDbUsageOrReciver::Usage(usage));
+                    return Ok(TestDbUsageOrReceiver::Usage(usage));
                 }
 
                 debug!("Ready test db {template_hash} was not found in pool");
@@ -103,13 +103,14 @@ impl PgTempestCore {
                     info!("New test db {template_hash} {test_db_id} was added to pool");
                 }
 
-                Ok(TestDbUsageOrReciver::Reciver(reciver))
+                Ok(TestDbUsageOrReceiver::Receiver(reciver))
             })
             .await?;
 
         let usage = match test_db_usage_or_reciver {
-            TestDbUsageOrReciver::Usage(usage) => usage,
-            TestDbUsageOrReciver::Reciver(reciver) => reciver.await.unwrap(),
+            TestDbUsageOrReceiver::Usage(usage) => usage,
+            // TODO: Remove unwrap
+            TestDbUsageOrReceiver::Receiver(receiver) => receiver.await.unwrap(),
         };
 
         info!(
@@ -130,7 +131,7 @@ impl PgTempestCore {
     }
 }
 
-enum TestDbUsageOrReciver {
+enum TestDbUsageOrReceiver {
     Usage(TestDbUsage),
-    Reciver(oneshot::Receiver<TestDbUsage>),
+    Receiver(oneshot::Receiver<TestDbUsage>),
 }
