@@ -20,10 +20,11 @@ impl PgTempestCore {
         test_db_id: TestDbId,
     ) {
         let test_db_name = TestDbName::new(template_hash, test_db_id);
+        let template_db_name = TemplateDbName::new(template_hash);
 
         let db_creation_result = self
             .pg_client
-            .recreate_test_db(&test_db_name, &TemplateDbName::new(template_hash))
+            .recreate_db(test_db_name.clone().into(), Some(template_db_name.into()), false)
             .await;
 
         let result = self

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tracing::{debug, error};
 
+use crate::models::value_types::pg_identifier::PgIdentifier;
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{TemplateAwaitingResult, TemplateInitializationState},
@@ -10,10 +11,23 @@ use crate::{
 };
 
 impl PgTempestCore {
-    pub async fn recreate_template_db(self: Arc<PgTempestCore>, template_hash: TemplateHash) {
+    pub async fn recreate_template_db(
+        self: Arc<PgTempestCore>,
+        template_hash: TemplateHash,
+        parent_template_db_name: Option<PgIdentifier>,
+    ) {
         let template_db_name = TemplateDbName::new(template_hash);
+        let parent_template_db_name =
+            parent_template_db_name.or(self.templates_configs.parent_template_db_name.clone());
 
-        let db_creation_result = self.pg_client.recreate_template_db(&template_db_name).await;
+        let db_creation_result = self
+            .pg_client
+            .recreate_db(
+                template_db_name.clone().into(),
+                parent_template_db_name,
+                true,
+            )
+            .await;
 
         if let Err(err) = db_creation_result {
             error!("Failed to create db {template_db_name}: {err}");

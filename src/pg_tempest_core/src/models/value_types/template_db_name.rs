@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::LazyLock};
 
 use anyhow::anyhow;
-use derive_more::{AsRef, Debug, Display, Into};
+use derive_more::{AsRef, Display, Into};
 use regex::Regex;
 
 use crate::models::value_types::{pg_identifier::PgIdentifier, template_hash::TemplateHash};
@@ -24,7 +24,7 @@ impl TemplateDbName {
 
         TemplateDbName {
             pg_identifier: PgIdentifier::new(identifier).unwrap(),
-            template_hash: template_hash,
+            template_hash,
         }
     }
 }
@@ -42,7 +42,7 @@ impl TryFrom<PgIdentifier> for TemplateDbName {
 
         Ok(TemplateDbName {
             pg_identifier: identifier,
-            template_hash: template_hash,
+            template_hash,
         })
     }
 }

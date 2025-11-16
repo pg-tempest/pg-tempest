@@ -18,7 +18,7 @@ async fn db_double_drop() {
     let db_name = PgIdentifier::new("test_database").unwrap();
 
     // DB creation
-    let result = client.create_db(&db_name, false).await;
+    let result = client.create_db(db_name.clone(), None, false).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -26,7 +26,7 @@ async fn db_double_drop() {
     }
 
     // First drop
-    let result = client.drop_db(&db_name).await;
+    let result = client.drop_db(db_name.clone()).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -34,16 +34,16 @@ async fn db_double_drop() {
     }
 
     // Second drop
-    let result = client.drop_db(&db_name).await;
+    let result = client.drop_db(db_name).await;
 
     assert! {
-        matches!(result, Err(DropDbError::DbDoesntExists {..})),
+        matches!(result, Err(DropDbError::DbDoesNotExists {..})),
         "{result:?}"
     }
 }
 
 #[tokio::test]
-async fn drop_used_template() {
+async fn drop_template_db() {
     let postgresql_container = testcontainers_modules::postgres::Postgres::default()
         .start()
         .await
@@ -51,21 +51,10 @@ async fn drop_used_template() {
 
     let client = common::create_pg_client(&postgresql_container).await;
 
-    let template_name = PgIdentifier::new("test_template").unwrap();
-    let db_name = PgIdentifier::new("test_database").unwrap();
+    let template_db_name = PgIdentifier::new("test_template").unwrap();
 
     // Template creation
-    let result = client.create_db(&template_name, false).await;
-
-    assert! {
-        matches!(result, Ok(_)),
-        "{result:?}"
-    }
-
-    // Db creation
-    let result = client
-        .create_db_with_template(&db_name, &template_name)
-        .await;
+    let result = client.create_db(template_db_name.clone(), None, true).await;
 
     assert! {
         matches!(result, Ok(_)),
@@ -73,10 +62,10 @@ async fn drop_used_template() {
     }
 
     // Drop template
-    let result = client.drop_db(&template_name).await;
+    let result = client.drop_db(template_db_name).await;
 
     assert! {
-        matches!(result, Ok(_)),
+        matches!(result, Err(DropDbError::DbIsTemplate {..})),
         "{result:?}"
     }
 }

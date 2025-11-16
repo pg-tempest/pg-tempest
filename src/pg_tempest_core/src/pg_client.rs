@@ -8,23 +8,18 @@ use crate::models::value_types::pg_identifier::PgIdentifier;
 pub trait PgClient: Send + Sync {
     async fn alter_db_is_template(
         &self,
-        db_name: &PgIdentifier,
+        db_name: PgIdentifier,
         is_template: bool,
     ) -> Result<(), AlterDbIsTemplateError>;
 
-    async fn create_db_with_template(
-        &self,
-        db_name: &PgIdentifier,
-        template_name: &PgIdentifier,
-    ) -> Result<(), CreateDbWithTemplateError>;
-
     async fn create_db(
         &self,
-        db_name: &PgIdentifier,
+        db_name: PgIdentifier,
+        template_db_name: Option<PgIdentifier>,
         is_template: bool,
-    ) -> Result<(), CreateDatabaseError>;
+    ) -> Result<(), CreateDbError>;
 
-    async fn drop_db(&self, db_name: &PgIdentifier) -> Result<(), DropDbError>;
+    async fn drop_db(&self, db_name: PgIdentifier) -> Result<(), DropDbError>;
 
     async fn get_dbs(&self) -> anyhow::Result<Vec<Db>>;
 }
@@ -32,29 +27,23 @@ pub trait PgClient: Send + Sync {
 #[derive(Debug, Display, Error)]
 #[display("{self:?}")]
 pub enum AlterDbIsTemplateError {
-    DbDoesntExists { db_name: PgIdentifier },
+    DbDoesNotExists { db_name: PgIdentifier },
     Unexpected { inner: anyhow::Error },
 }
 
 #[derive(Debug, Display, Error)]
 #[display("{self:?}")]
-pub enum CreateDbWithTemplateError {
+pub enum CreateDbError {
     DbAlreadyExists { db_name: PgIdentifier },
-    TemplateDoesntExist { template_name: PgIdentifier },
-    Unexpected { inner: anyhow::Error },
-}
-
-#[derive(Debug, Display, Error)]
-#[display("{self:?}")]
-pub enum CreateDatabaseError {
-    DbAlreadyExists { db_name: PgIdentifier },
+    TemplateDbDoesNotExist { template_db_name: PgIdentifier },
     Unexpected { inner: anyhow::Error },
 }
 
 #[derive(Debug, Display, Error)]
 #[display("{self:?}")]
 pub enum DropDbError {
-    DbDoesntExists { db_name: PgIdentifier },
+    DbDoesNotExists { db_name: PgIdentifier },
+    DbIsTemplate { db_name: PgIdentifier },
     Unexpected { inner: anyhow::Error },
 }
 

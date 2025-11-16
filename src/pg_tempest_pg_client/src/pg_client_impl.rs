@@ -1,20 +1,17 @@
 use std::sync::Arc;
 
+use crate::utils::{db_already_exists, db_doesnt_exist, wrong_object_type};
 use async_trait::async_trait;
+use pg_tempest_core::utils::adhoc_display::AdHocDisplay;
 use pg_tempest_core::{
     configs::dbms_configs::DbmsConfigs,
     models::value_types::pg_identifier::PgIdentifier,
-    pg_client::{
-        AlterDbIsTemplateError, CreateDatabaseError, CreateDbWithTemplateError, Db, DropDbError,
-        PgClient,
-    },
+    pg_client::{AlterDbIsTemplateError, CreateDbError, Db, DropDbError, PgClient},
 };
 use sqlx::{
     FromRow, PgPool,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
-
-use crate::utils::{db_already_exists, db_doesnt_exist};
 
 pub struct PgClientImpl {
     pg_pool: PgPool,
@@ -43,7 +40,7 @@ impl PgClientImpl {
 impl PgClient for PgClientImpl {
     async fn alter_db_is_template(
         &self,
-        db_name: &PgIdentifier,
+        db_name: PgIdentifier,
         is_template: bool,
     ) -> Result<(), AlterDbIsTemplateError> {
         let query_result = sqlx::query(&format!(
@@ -55,7 +52,7 @@ impl PgClient for PgClientImpl {
         match query_result {
             Ok(_) => Ok(()),
             Err(sqlx::Error::Database(error)) if db_doesnt_exist(&error) => {
-                Err(AlterDbIsTemplateError::DbDoesntExists {
+                Err(AlterDbIsTemplateError::DbDoesNotExists {
                     db_name: db_name.clone(),
                 })
             }
@@ -65,46 +62,24 @@ impl PgClient for PgClientImpl {
         }
     }
 
-    async fn create_db_with_template(
-        &self,
-        db_name: &PgIdentifier,
-        template_name: &PgIdentifier,
-    ) -> Result<(), CreateDbWithTemplateError> {
-        let query_result = sqlx::query(&format!(
-            r#"CREATE DATABASE "{db_name}" WITH TEMPLATE "{template_name}""#
-        ))
-        .execute(&self.pg_pool)
-        .await;
-
-        match query_result {
-            Ok(_) => Ok(()),
-            Err(sqlx::Error::Database(error)) if db_already_exists(&error) => {
-                Err(CreateDbWithTemplateError::DbAlreadyExists {
-                    db_name: db_name.clone(),
-                })
-            }
-            Err(sqlx::Error::Database(error)) if db_doesnt_exist(&error) => {
-                Err(CreateDbWithTemplateError::TemplateDoesntExist {
-                    template_name: template_name.clone(),
-                })
-            }
-            Err(error) => Err(CreateDbWithTemplateError::Unexpected {
-                inner: error.into(),
-            }),
-        }
-    }
-
     async fn create_db(
         &self,
-        db_name: &PgIdentifier,
+        db_name: PgIdentifier,
+        template_db_name: Option<PgIdentifier>,
         is_template: bool,
-    ) -> Result<(), CreateDatabaseError> {
+    ) -> Result<(), CreateDbError> {
         let query_result = sqlx::query(&format!(
             r#"
             CREATE DATABASE "{db_name}"
-                WITH
-                IS_TEMPLATE = {is_template};
-            "#
+                TEMPLATE {}
+                IS_TEMPLATE {is_template};
+            "#,
+            AdHocDisplay(|f| {
+                match template_db_name {
+                    None => f.write_str("DEFAULT"),
+                    Some(ref db_name) => write!(f, r#""{db_name}""#),
+                }
+            })
         ))
         .execute(&self.pg_pool)
         .await;
@@ -112,17 +87,24 @@ impl PgClient for PgClientImpl {
         match query_result {
             Ok(_) => Ok(()),
             Err(sqlx::Error::Database(error)) if db_already_exists(&error) => {
-                Err(CreateDatabaseError::DbAlreadyExists {
+                Err(CreateDbError::DbAlreadyExists {
                     db_name: db_name.clone(),
                 })
             }
-            Err(error) => Err(CreateDatabaseError::Unexpected {
+            Err(sqlx::Error::Database(error))
+                if db_doesnt_exist(&error) && template_db_name.is_some() =>
+            {
+                Err(CreateDbError::TemplateDbDoesNotExist {
+                    template_db_name: template_db_name.unwrap(),
+                })
+            }
+            Err(error) => Err(CreateDbError::Unexpected {
                 inner: error.into(),
             }),
         }
     }
 
-    async fn drop_db(&self, db_name: &PgIdentifier) -> Result<(), DropDbError> {
+    async fn drop_db(&self, db_name: PgIdentifier) -> Result<(), DropDbError> {
         let query_result = sqlx::query(&format!(r#"DROP DATABASE "{db_name}""#))
             .execute(&self.pg_pool)
             .await;
@@ -130,7 +112,12 @@ impl PgClient for PgClientImpl {
         match query_result {
             Ok(_) => Ok(()),
             Err(sqlx::Error::Database(error)) if db_doesnt_exist(&error) => {
-                Err(DropDbError::DbDoesntExists {
+                Err(DropDbError::DbDoesNotExists {
+                    db_name: db_name.clone(),
+                })
+            }
+            Err(sqlx::Error::Database(error)) if wrong_object_type(&error) => {
+                Err(DropDbError::DbIsTemplate {
                     db_name: db_name.clone(),
                 })
             }

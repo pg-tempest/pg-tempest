@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use anyhow::Ok;
 
+use crate::configs::templates_configs::TemplatesConfigs;
 use crate::{
     configs::{db_pool_configs::DbPoolConfigs, dbms_configs::DbmsConfigs},
     metadata::metadata_storage::MetadataStorage,
     pg_client::PgClient,
     utils::clock::{Clock, SystemClock},
 };
-use crate::configs::template_initialization_configs::TemplateInitializationConfigs;
 
 pub mod configs;
 pub mod features;
@@ -24,7 +24,7 @@ pub struct PgTempestCore {
     pg_client: Arc<dyn PgClient>,
     dbms_configs: Arc<DbmsConfigs>,
     db_pool_configs: Arc<DbPoolConfigs>,
-    template_initialization_configs: Arc<TemplateInitializationConfigs>,
+    templates_configs: Arc<TemplatesConfigs>,
 }
 
 impl PgTempestCore {
@@ -32,7 +32,7 @@ impl PgTempestCore {
         pg_client: Arc<dyn PgClient>,
         dbms_configs: Arc<DbmsConfigs>,
         db_pool_configs: Arc<DbPoolConfigs>,
-        template_initialization_configs: Arc<TemplateInitializationConfigs>,
+        templates_configs: Arc<TemplatesConfigs>,
     ) -> anyhow::Result<PgTempestCore> {
         let metadata_storage = Arc::new(MetadataStorage::new());
         let clock = Arc::new(SystemClock);
@@ -43,7 +43,7 @@ impl PgTempestCore {
             pg_client,
             db_pool_configs,
             dbms_configs,
-            template_initialization_configs,
+            templates_configs,
         })
     }
 }

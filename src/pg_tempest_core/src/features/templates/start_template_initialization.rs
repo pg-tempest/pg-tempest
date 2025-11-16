@@ -8,6 +8,7 @@ use crate::metadata::template_metadata::TemplateAwaitingResult;
 use crate::metadata::template_metadata::TemplateInitializationState;
 use crate::metadata::template_metadata::TemplateMetadata;
 use crate::models::db_connection_options::DbConnectionOptions;
+use crate::models::value_types::pg_identifier::PgIdentifier;
 use crate::models::value_types::template_db_name::TemplateDbName;
 use crate::models::value_types::template_hash::TemplateHash;
 use anyhow::anyhow;
@@ -36,6 +37,7 @@ impl PgTempestCore {
         self: Arc<Self>,
         template_hash: TemplateHash,
         initialization_duration: Duration,
+        parent_template_db_name: Option<PgIdentifier>,
     ) -> anyhow::Result<StartTemplateInitializationResult> {
         let result_receiver: oneshot::Receiver<TemplateAwaitingResult> = self
             .metadata_storage
@@ -58,7 +60,10 @@ impl PgTempestCore {
                         test_db_id_sequence: 0,
                     });
 
-                    tokio::spawn(self.clone().recreate_template_db(template_hash));
+                    tokio::spawn(
+                        self.clone()
+                            .recreate_template_db(template_hash, parent_template_db_name),
+                    );
 
                     return result_receiver;
                 };
@@ -98,7 +103,10 @@ impl PgTempestCore {
                             result_sender,
                         });
 
-                        tokio::spawn(self.clone().recreate_template_db(template_hash));
+                        tokio::spawn(
+                            self.clone()
+                                .recreate_template_db(template_hash, parent_template_db_name),
+                        );
                     }
                 };
 
@@ -106,8 +114,11 @@ impl PgTempestCore {
             })
             .await;
 
-        let long_polling_timeout =
-            Duration::from_millis(self.template_initialization_configs.long_polling_timeout_ms);
+        let long_polling_timeout = Duration::from_millis(
+            self.templates_configs
+                .initialization
+                .long_polling_timeout_ms,
+        );
 
         let awaiting_result = select! {
             _ = sleep(long_polling_timeout) => {

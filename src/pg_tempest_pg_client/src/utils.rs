@@ -15,3 +15,7 @@ pub fn db_already_exists(db_error: impl AsRef<dyn DatabaseError>) -> bool {
 pub fn db_doesnt_exist(db_error: impl AsRef<dyn DatabaseError>) -> bool {
     has_code(db_error, "3D000")
 }
+
+pub fn wrong_object_type(db_error: impl AsRef<dyn DatabaseError>) -> bool {
+    has_code(db_error, "42809")
+}

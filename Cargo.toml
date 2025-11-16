@@ -12,7 +12,7 @@ axum = { version = "0.8.4", features = ["tokio", "json", "macros"] }
 config = { version = "0.15.16", features = ["toml"] }
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "sync", "time"] }
 uuid = { version = "1.10.0", features = ["v7", "serde"] }
-serde = { version = "1.0.210", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive", "std", "rc"] }
 async-trait = { version = "0.1.89" }
 extension-trait = { version = "1.0.2" }
 chrono = { version = "0.4.42", features = ["serde"] }

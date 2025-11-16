@@ -10,7 +10,8 @@ impl PgTempestCore {
         tokio::spawn(async move {
             loop {
                 let delay = Duration::from_millis(
-                    self.template_initialization_configs
+                    self.templates_configs
+                        .initialization
                         .max_deadline_handling_delay_ms,
                 );
 

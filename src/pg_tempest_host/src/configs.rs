@@ -2,7 +2,7 @@ use std::{env, sync::Arc};
 
 use crate::logging::configs::LoggingConfigs;
 use config::{Config, ConfigError};
-use pg_tempest_core::configs::template_initialization_configs::TemplateInitializationConfigs;
+use pg_tempest_core::configs::templates_configs::TemplatesConfigs;
 use pg_tempest_core::configs::{db_pool_configs::DbPoolConfigs, dbms_configs::DbmsConfigs};
 use pg_tempest_server::configs::ServerConfigs;
 use serde::Deserialize;
@@ -13,7 +13,7 @@ pub struct AppConfigs {
     pub db_pool: Arc<DbPoolConfigs>,
     pub server: Arc<ServerConfigs>,
     pub logging: Arc<LoggingConfigs>,
-    pub template_initialization: Arc<TemplateInitializationConfigs>,
+    pub templates: Arc<TemplatesConfigs>,
 }
 
 pub fn build_app_configs() -> Result<Arc<AppConfigs>, ConfigError> {

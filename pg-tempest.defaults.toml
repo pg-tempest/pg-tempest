@@ -24,6 +24,9 @@ server = "Info"
 core = "Info"
 db_queries = "Info"
 
-[template_initialization]
+[templates]
+#parent_template_db_name = "template0"
+
+[templates.initialization]
 max_deadline_handling_delay_ms = 50
 long_polling_timeout_ms = 1000
