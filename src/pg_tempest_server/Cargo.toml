@@ -6,10 +6,7 @@ edition = "2024"
 [dependencies]
 pg_tempest_core = { path = "../pg_tempest_core" }
 axum = { workspace = true }
-tower = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
-uuid = { workspace = true }
 chrono = { workspace = true }
-anyhow = { workspace = true }

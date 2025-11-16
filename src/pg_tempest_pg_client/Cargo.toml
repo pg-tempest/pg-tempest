@@ -7,8 +7,6 @@ edition = "2024"
 pg_tempest_core = { path = "../pg_tempest_core" }
 async-trait = { workspace = true }
 sqlx = { workspace = true }
-derive_more = { workspace = true }
-thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 [dev-dependencies]
