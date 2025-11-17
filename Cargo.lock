@@ -1670,7 +1670,6 @@ dependencies = [
 name = "pg-tempest"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "config",
  "derive_more",
  "pg_tempest_core",
@@ -1686,7 +1685,6 @@ dependencies = [
 name = "pg_tempest_core"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "chrono",
  "derive_more",
@@ -1703,7 +1701,6 @@ dependencies = [
 name = "pg_tempest_pg_client"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "pg_tempest_core",
  "sqlx",

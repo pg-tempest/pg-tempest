@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
-use anyhow::Ok;
 use tracing::Level;
 use tracing_subscriber::layer::SubscriberExt;
-
+use pg_tempest_core::utils::unexpected_error::UnexpectedError;
 use crate::logging::configs::LoggingConfigs;
 
 pub mod configs;
 
-pub fn setup_logging(configs: Arc<LoggingConfigs>) -> anyhow::Result<()> {
+pub fn setup_logging(configs: Arc<LoggingConfigs>) -> Result<(), UnexpectedError> {
     let filter = tracing_subscriber::filter::Targets::new()
         .with_default(Level::INFO)
         .with_target("pg_tempest_core", configs.core.unwrap_or(Level::INFO))

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::utils::unexpected_error::UnexpectedError;
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{TestDbState, TestDbUsage},
@@ -9,7 +10,6 @@ use crate::{
     },
     pg_client_extensions::PgClientExtensions,
 };
-use anyhow::{anyhow, bail};
 use tracing::{debug, error, instrument};
 
 impl PgTempestCore {
@@ -24,25 +24,29 @@ impl PgTempestCore {
 
         let db_creation_result = self
             .pg_client
-            .recreate_db(test_db_name.clone().into(), Some(template_db_name.into()), false)
+            .recreate_db(
+                test_db_name.clone().into(),
+                Some(template_db_name.into()),
+                false,
+            )
             .await;
 
-        let result = self
+        let result: Result<(), UnexpectedError> = self
             .metadata_storage
             .execute_under_lock(template_hash, |template| {
                 let Some(template) = template else {
-                    bail!("Template {template_hash} was not found");
+                    return Err("Template {template_hash} was not found".into());
                 };
 
                 let test_db = template
                     .test_dbs
                     .iter_mut()
                     .find(|x| x.id == test_db_id)
-                    .ok_or(anyhow!("Test db {test_db_id} was not found"))?;
+                    .ok_or("Test db {test_db_id} was not found")?;
 
                 if let Err(_) = db_creation_result {
                     test_db.state = TestDbState::Corrupted;
-                    bail!("Failed to create {test_db_name}");
+                    return Err("Failed to create {test_db_name}".into());
                 }
 
                 while let Some(test_db_awaiter) = template.test_db_awaiters.pop_front() {
@@ -52,7 +56,7 @@ impl PgTempestCore {
                         deadline: usage_deadline,
                     };
 
-                    if let Ok(_) = test_db_awaiter.readines_sender.send(usage) {
+                    if let Ok(_) = test_db_awaiter.readiness_sender.send(usage) {
                         test_db.state = TestDbState::InUse { usage_deadline };
                         return Ok(());
                     }

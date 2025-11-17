@@ -12,6 +12,5 @@ regex = { workspace = true }
 tokio = { workspace = true }
 hex = { workspace = true }
 thiserror = { workspace = true }
-anyhow = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }

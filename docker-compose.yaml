@@ -2,8 +2,8 @@ services:
   pg-tempest:
     image: rudomitori/pg-tempest:0.2.0
     restart: always
-    ports: 
-    - 8000:8000
+    ports:
+      - "8000:8000"
     environment:
       - PG_TEMPEST_DBMS_INNER_HOST=db
       - PG_TEMPEST_DBMS_INNER_PORT=5432
@@ -11,13 +11,13 @@ services:
       - PG_TEMPEST_DBMS_OUTER_PORT=5433
     depends_on:
       - db
-    
+
 
   db:
     image: postgres
     restart: always
     ports:
-      - 5433:5432
+      - "5433:5432"
     environment:
       POSTGRES_PASSWORD: postgres
     # For testing purpose we can disable fsync, synchronous_commit, full_page_writes

@@ -1,21 +1,21 @@
+use derive_more::Display;
+use hex::FromHexError;
+use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, str::FromStr};
 
-use derive_more::Display;
-use serde::{Deserialize, Serialize};
-
-pub const TEMPLATE_HASH_LENGHT: usize = 16;
-pub const TEMPLATE_HASH_LENGHT_IN_HEX: usize = 32;
+pub const TEMPLATE_HASH_LENGTH: usize = 16;
+pub const TEMPLATE_HASH_LENGTH_IN_HEX: usize = 32;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Display, Deserialize, Serialize, Default)]
 #[display("{self:?}")]
 #[serde(try_from = "&str")]
 #[serde(into = "Box<str>")]
 pub struct TemplateHash {
-    value: [u8; TEMPLATE_HASH_LENGHT],
+    value: [u8; TEMPLATE_HASH_LENGTH],
 }
 
 impl TemplateHash {
-    pub fn new(value: [u8; TEMPLATE_HASH_LENGHT]) -> TemplateHash {
+    pub fn new(value: [u8; TEMPLATE_HASH_LENGTH]) -> TemplateHash {
         TemplateHash { value }
     }
 }
@@ -28,7 +28,7 @@ impl Debug for TemplateHash {
 }
 
 impl TryFrom<&str> for TemplateHash {
-    type Error = anyhow::Error;
+    type Error = FromHexError;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         TemplateHash::from_str(s)
@@ -48,10 +48,10 @@ impl From<TemplateHash> for String {
 }
 
 impl FromStr for TemplateHash {
-    type Err = anyhow::Error;
+    type Err = FromHexError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut hash = [0u8; TEMPLATE_HASH_LENGHT];
+        let mut hash = [0u8; TEMPLATE_HASH_LENGTH];
         hex::decode_to_slice(s, &mut hash)?;
 
         Ok(TemplateHash::new(hash))

@@ -1,8 +1,6 @@
-use std::{str::FromStr, sync::LazyLock};
-
-use anyhow::anyhow;
 use derive_more::{AsRef, Display, Into};
 use regex::Regex;
+use std::{str::FromStr, sync::LazyLock};
 
 use crate::models::value_types::{
     pg_identifier::PgIdentifier, template_hash::TemplateHash, test_db_id::TestDbId,
@@ -36,16 +34,17 @@ impl TestDbName {
 }
 
 impl TryFrom<PgIdentifier> for TestDbName {
-    type Error = anyhow::Error;
+    type Error = String;
 
     fn try_from(identifier: PgIdentifier) -> Result<Self, Self::Error> {
         let (_, [template_hash, test_db_id]) = TEMPLATE_DB_NAME_REGEX
             .captures(identifier.as_ref())
-            .ok_or(anyhow!("Identifier is not test db name"))?
+            .ok_or("Identifier is not test db name")?
             .extract();
 
-        let template_hash = TemplateHash::from_str(template_hash)?;
-        let test_db_id = TestDbId::from_str(test_db_id)?;
+        // Format of a template hash and a test db id is validated by TEMPLATE_DB_NAME_REGEX
+        let template_hash = TemplateHash::from_str(template_hash).unwrap();
+        let test_db_id = TestDbId::from_str(test_db_id).unwrap();
 
         Ok(TestDbName {
             pg_identifier: identifier,
@@ -58,14 +57,14 @@ impl TryFrom<PgIdentifier> for TestDbName {
 #[cfg(test)]
 mod tests {
     use crate::models::value_types::{
-        template_hash::{TEMPLATE_HASH_LENGHT, TemplateHash},
+        template_hash::{TEMPLATE_HASH_LENGTH, TemplateHash},
         test_db_id::TestDbId,
         test_db_name::TestDbName,
     };
 
     #[test]
     fn new_test_db_name_formats_correctly() {
-        let mut hash = [0u8; TEMPLATE_HASH_LENGHT];
+        let mut hash = [0u8; TEMPLATE_HASH_LENGTH];
         for (index, byte) in hash.iter_mut().enumerate() {
             *byte = index as u8 + 1;
         }

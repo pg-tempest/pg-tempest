@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::utils::{db_already_exists, db_doesnt_exist, wrong_object_type};
 use async_trait::async_trait;
 use pg_tempest_core::utils::adhoc_display::AdHocDisplay;
+use pg_tempest_core::utils::unexpected_error::UnexpectedError;
 use pg_tempest_core::{
     configs::dbms_configs::DbmsConfigs,
     models::value_types::pg_identifier::PgIdentifier,
@@ -18,7 +19,7 @@ pub struct PgClientImpl {
 }
 
 impl PgClientImpl {
-    pub async fn new(configs: Arc<DbmsConfigs>) -> anyhow::Result<PgClientImpl> {
+    pub async fn new(configs: Arc<DbmsConfigs>) -> Result<PgClientImpl, UnexpectedError> {
         let pg_connect_options = PgConnectOptions::new_without_pgpass()
             .host(&configs.inner.host)
             .port(configs.inner.port)
@@ -127,7 +128,7 @@ impl PgClient for PgClientImpl {
         }
     }
 
-    async fn get_dbs(&self) -> anyhow::Result<Vec<Db>> {
+    async fn get_dbs(&self) -> Result<Vec<Db>, UnexpectedError> {
         let rows: Vec<DbRow> = sqlx::query_as(
             r#"
             select
@@ -145,7 +146,7 @@ impl PgClient for PgClientImpl {
         let databases = rows
             .into_iter()
             .map(map_to_model)
-            .collect::<anyhow::Result<Vec<Db>>>();
+            .collect::<Result<Vec<Db>, UnexpectedError>>();
 
         databases
     }
@@ -160,7 +161,7 @@ struct DbRow {
     allow_connection: bool,
 }
 
-fn map_to_model(row: DbRow) -> anyhow::Result<Db> {
+fn map_to_model(row: DbRow) -> Result<Db, UnexpectedError> {
     Ok(Db {
         oid: row.oid.0,
         name: PgIdentifier::new(row.name)?,

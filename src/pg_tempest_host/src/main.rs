@@ -1,6 +1,7 @@
-use std::{error::Error, sync::Arc};
+use std::sync::Arc;
 
 use pg_tempest_core::PgTempestCore;
+use pg_tempest_core::utils::unexpected_error::UnexpectedError;
 use pg_tempest_pg_client::pg_client_impl::PgClientImpl;
 use pg_tempest_server::Server;
 
@@ -10,7 +11,7 @@ mod configs;
 pub mod logging;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), UnexpectedError> {
     let configs = build_app_configs()?;
 
     setup_logging(configs.logging.clone())?;

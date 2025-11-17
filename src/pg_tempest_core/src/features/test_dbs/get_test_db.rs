@@ -1,9 +1,9 @@
-use std::{sync::Arc, time::Duration};
-
 use chrono::{DateTime, Utc};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::oneshot;
 use tracing::{debug, info, instrument, warn};
 
+use crate::utils::unexpected_error::UnexpectedError;
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{
@@ -25,8 +25,8 @@ pub struct GetTestDbOkResult {
 
 pub enum GetTestDbErrorResult {
     TemplateWasNotFound,
-    TemplateIsNotInitalized,
-    Unknown { inner: anyhow::Error },
+    TemplateIsNotInitialized,
+    Unknown { inner: UnexpectedError },
 }
 
 impl PgTempestCore {
@@ -36,7 +36,7 @@ impl PgTempestCore {
         template_hash: TemplateHash,
         usage_duration: Duration,
     ) -> Result<GetTestDbOkResult, GetTestDbErrorResult> {
-        let test_db_usage_or_reciver: TestDbUsageOrReceiver = self
+        let test_db_usage_or_receiver: TestDbUsageOrReceiver = self
             .metadata_storage
             .execute_under_lock(template_hash, |template| {
                 let Some(template) = template else {
@@ -49,7 +49,7 @@ impl PgTempestCore {
                     TemplateInitializationState::Finished
                 ) {
                     warn!("Template {template_hash} initialization is not finished");
-                    return Err(GetTestDbErrorResult::TemplateIsNotInitalized);
+                    return Err(GetTestDbErrorResult::TemplateIsNotInitialized);
                 };
 
                 let ready_test_db = template
@@ -75,10 +75,10 @@ impl PgTempestCore {
 
                 debug!("Ready test db {template_hash} was not found in pool");
 
-                let (sender, reciver) = oneshot::channel();
+                let (sender, receiver) = oneshot::channel();
                 let awaiter = TestDbAwaiter {
                     usage_duration,
-                    readines_sender: sender,
+                    readiness_sender: sender,
                 };
                 template.test_db_awaiters.push_back(awaiter);
 
@@ -103,11 +103,11 @@ impl PgTempestCore {
                     info!("New test db {template_hash} {test_db_id} was added to pool");
                 }
 
-                Ok(TestDbUsageOrReceiver::Receiver(reciver))
+                Ok(TestDbUsageOrReceiver::Receiver(receiver))
             })
             .await?;
 
-        let usage = match test_db_usage_or_reciver {
+        let usage = match test_db_usage_or_receiver {
             TestDbUsageOrReceiver::Usage(usage) => usage,
             // TODO: Remove unwrap
             TestDbUsageOrReceiver::Receiver(receiver) => receiver.await.unwrap(),

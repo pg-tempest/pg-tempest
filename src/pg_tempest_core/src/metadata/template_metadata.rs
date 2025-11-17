@@ -60,7 +60,7 @@ pub enum TestDbState {
 
 pub struct TestDbAwaiter {
     pub usage_duration: Duration,
-    pub readines_sender: oneshot::Sender<TestDbUsage>,
+    pub readiness_sender: oneshot::Sender<TestDbUsage>,
 }
 
 pub struct TestDbUsage {

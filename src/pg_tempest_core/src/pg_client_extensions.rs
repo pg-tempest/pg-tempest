@@ -1,11 +1,12 @@
 use extension_trait::extension_trait;
 
+use crate::utils::unexpected_error::UnexpectedError;
 use crate::{models::value_types::pg_identifier::PgIdentifier, pg_client::PgClient};
 
 #[extension_trait]
 #[allow(async_fn_in_trait)]
 pub impl PgClientExtensions for dyn PgClient {
-    async fn drop_template_db(&self, db_name: PgIdentifier) -> anyhow::Result<()> {
+    async fn drop_template_db(&self, db_name: PgIdentifier) -> Result<(), UnexpectedError> {
         self.alter_db_is_template(db_name.clone(), false).await?;
         self.drop_db(db_name).await?;
 
@@ -17,7 +18,7 @@ pub impl PgClientExtensions for dyn PgClient {
         db_name: PgIdentifier,
         template_db_name: Option<PgIdentifier>,
         is_template: bool,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), UnexpectedError> {
         let dbs = self.get_dbs().await?;
         let db_exists = dbs.iter().find(|x| x.name == db_name).is_some();
 

@@ -29,7 +29,7 @@ impl PgTempestCore {
                                 match test_db.state {
                                     TestDbState::Corrupted => {
                                         info!(
-                                            "Retring to recreate test db {} {}",
+                                            "Retrying to recreate test db {} {}",
                                             template_hash, test_db.id
                                         );
                                     }

@@ -3,6 +3,7 @@ use derive_more::Display;
 use thiserror::Error;
 
 use crate::models::value_types::pg_identifier::PgIdentifier;
+use crate::utils::unexpected_error::UnexpectedError;
 
 #[async_trait]
 pub trait PgClient: Send + Sync {
@@ -21,14 +22,14 @@ pub trait PgClient: Send + Sync {
 
     async fn drop_db(&self, db_name: PgIdentifier) -> Result<(), DropDbError>;
 
-    async fn get_dbs(&self) -> anyhow::Result<Vec<Db>>;
+    async fn get_dbs(&self) -> Result<Vec<Db>, UnexpectedError>;
 }
 
 #[derive(Debug, Display, Error)]
 #[display("{self:?}")]
 pub enum AlterDbIsTemplateError {
     DbDoesNotExists { db_name: PgIdentifier },
-    Unexpected { inner: anyhow::Error },
+    Unexpected { inner: UnexpectedError },
 }
 
 #[derive(Debug, Display, Error)]
@@ -36,7 +37,7 @@ pub enum AlterDbIsTemplateError {
 pub enum CreateDbError {
     DbAlreadyExists { db_name: PgIdentifier },
     TemplateDbDoesNotExist { template_db_name: PgIdentifier },
-    Unexpected { inner: anyhow::Error },
+    Unexpected { inner: UnexpectedError },
 }
 
 #[derive(Debug, Display, Error)]
@@ -44,7 +45,7 @@ pub enum CreateDbError {
 pub enum DropDbError {
     DbDoesNotExists { db_name: PgIdentifier },
     DbIsTemplate { db_name: PgIdentifier },
-    Unexpected { inner: anyhow::Error },
+    Unexpected { inner: UnexpectedError },
 }
 
 pub struct Db {

@@ -11,7 +11,7 @@ use crate::models::db_connection_options::DbConnectionOptions;
 use crate::models::value_types::pg_identifier::PgIdentifier;
 use crate::models::value_types::template_db_name::TemplateDbName;
 use crate::models::value_types::template_hash::TemplateHash;
-use anyhow::anyhow;
+use crate::utils::unexpected_error::UnexpectedError;
 use chrono::{DateTime, Utc};
 use tokio::select;
 use tokio::sync::oneshot;
@@ -38,7 +38,7 @@ impl PgTempestCore {
         template_hash: TemplateHash,
         initialization_duration: Duration,
         parent_template_db_name: Option<PgIdentifier>,
-    ) -> anyhow::Result<StartTemplateInitializationResult> {
+    ) -> Result<StartTemplateInitializationResult, UnexpectedError> {
         let result_receiver: oneshot::Receiver<TemplateAwaitingResult> = self
             .metadata_storage
             .execute_under_lock(template_hash, |template| {
@@ -163,7 +163,7 @@ impl PgTempestCore {
             TemplateAwaitingResult::FailedToCreateTemplateDb => {
                 error!("Template db {template_hash} creation was failed");
 
-                Err(anyhow!("Template db {template_hash} creation was failed"))
+                Err("Template db {template_hash} creation was failed".into())
             }
         }
     }
