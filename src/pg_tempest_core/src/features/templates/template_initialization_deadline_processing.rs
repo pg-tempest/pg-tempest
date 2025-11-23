@@ -32,9 +32,12 @@ impl PgTempestCore {
                             } = &template.initialization_state
                                 && *initialization_deadline <= self.clock.now()
                             {
-                                info!("Template {template_hash} initialization deadline is now. Failing");
+                                info!("Template {template_hash} initialization deadline  was exceeded. Failing");
                                 tokio::spawn(
-                                    self.clone().fail_template_initialization(template_hash),
+                                    self.clone().fail_template_initialization(
+                                        template_hash,
+                                        Some(format!("Template {template_hash} initialization deadline was exceeded").into()),
+                                    ),
                                 );
                             };
                         })

@@ -1,9 +1,10 @@
-use std::{collections::VecDeque, time::Duration};
-
 use chrono::{DateTime, Utc};
+use std::sync::Arc;
+use std::{collections::VecDeque, time::Duration};
 use tokio::sync::oneshot;
 
 use crate::models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId};
+use crate::utils::errors::ArcDynError;
 
 pub struct TemplateMetadata {
     pub template_hash: TemplateHash,
@@ -28,7 +29,9 @@ pub enum TemplateInitializationState {
         initialization_deadline: DateTime<Utc>,
     },
     Finished,
-    Failed,
+    Failed {
+        reason: Option<Arc<str>>,
+    },
 }
 
 pub struct TemplateAwaiter {
@@ -42,8 +45,10 @@ pub enum TemplateAwaitingResult {
     },
     InitializationIsInProgress,
     InitializationIsFinished,
-    InitializationIsFailed,
-    FailedToCreateTemplateDb,
+    InitializationIsFailed {
+        reason: Option<Arc<str>>,
+    },
+    UnexpectedError(ArcDynError),
 }
 
 pub struct TestDbMetadata {

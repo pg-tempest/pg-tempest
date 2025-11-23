@@ -1,8 +1,9 @@
 use std::sync::Arc;
-
 use tracing::{debug, error};
 
 use crate::models::value_types::pg_identifier::PgIdentifier;
+use crate::pg_client_extensions::RecreateTemplateDbError;
+use crate::utils::errors::{ArcDynError, BoxDynError};
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{TemplateAwaitingResult, TemplateInitializationState},
@@ -22,51 +23,93 @@ impl PgTempestCore {
 
         let db_creation_result = self
             .pg_client
-            .recreate_db(
-                template_db_name.clone().into(),
-                parent_template_db_name,
-                true,
-            )
+            .recreate_template_db(template_db_name.clone().into(), parent_template_db_name)
             .await;
 
-        if let Err(err) = db_creation_result {
-            error!("Failed to create db {template_db_name}: {err}");
+        match db_creation_result {
+            Ok(_) => {
+                debug!("{template_db_name} was created");
+                send_template_awaiting_results(&self, template_hash).await
+            }
+            Err(RecreateTemplateDbError::ParentTemplateDbDoesNotExist {
+                parent_template_db_name,
+            }) => {
+                let fail_reason =
+                    format!("Parent template db {parent_template_db_name} was not found").into();
 
-            if let Err(err) = self.fail_template_initialization(template_hash).await {
-                error!("Failed to fail template {template_hash} initialization: {err}");
+                let fail_result = self
+                    .fail_template_initialization(template_hash, Some(fail_reason))
+                    .await;
+
+                if let Err(err) = fail_result {
+                    error!("{err}");
+                };
+            }
+            Err(err) => {
+                send_template_awaiting_unexpected_error(&self, template_hash, err.into()).await;
+            }
+        };
+    }
+}
+
+async fn send_template_awaiting_results(
+    pg_tempest_core: &PgTempestCore,
+    template_hash: TemplateHash,
+) {
+    pg_tempest_core
+        .metadata_storage
+        .execute_under_lock(template_hash, |template| {
+            let Some(template) = template else {
+                error!("Template {template_hash} was not found after db was created");
+                return;
             };
 
-            return;
-        }
+            while let Some(template_awaiter) = template.template_awaiters.pop_front() {
+                let initialization_deadline =
+                    pg_tempest_core.clock.now() + template_awaiter.initialization_duration;
 
-        debug!("Template db {template_hash} was created");
-
-        self.metadata_storage
-            .execute_under_lock(template_hash, |template| {
-                let Some(template) = template else {
-                    error!("Template {template_hash} was not found after db was created");
-                    return ();
+                let awaiting_result = TemplateAwaitingResult::InitializationIsStarted {
+                    initialization_deadline,
                 };
 
-                while let Some(template_awaiter) = template.template_awaiters.pop_front() {
-                    let initialization_deadline =
-                        self.clock.now() + template_awaiter.initialization_duration;
-
-                    let awaiting_result = TemplateAwaitingResult::InitializationIsStarted {
+                if let Ok(_) = template_awaiter.result_sender.send(awaiting_result) {
+                    template.initialization_state = TemplateInitializationState::InProgress {
                         initialization_deadline,
                     };
 
-                    if let Ok(_) = template_awaiter.result_sender.send(awaiting_result) {
-                        template.initialization_state = TemplateInitializationState::InProgress {
-                            initialization_deadline,
-                        };
-
-                        return ();
-                    }
+                    return;
                 }
+            }
 
-                template.initialization_state = TemplateInitializationState::Created;
-            })
-            .await;
-    }
+            template.initialization_state = TemplateInitializationState::Created;
+        })
+        .await
+}
+
+async fn send_template_awaiting_unexpected_error(
+    pg_tempest_core: &PgTempestCore,
+    template_hash: TemplateHash,
+    error: BoxDynError,
+) {
+    pg_tempest_core
+        .metadata_storage
+        .execute_under_lock(template_hash, |template| {
+            let Some(template) = template else {
+                error!("Template {template_hash} was not found after db was created");
+                return;
+            };
+
+            let error: ArcDynError = error.into();
+
+            while let Some(template_awaiter) = template.template_awaiters.pop_front() {
+                let awaiting_result = TemplateAwaitingResult::UnexpectedError(error.clone());
+
+                let _ = template_awaiter.result_sender.send(awaiting_result);
+            }
+
+            template.initialization_state = TemplateInitializationState::Failed {
+                reason: Some(error.to_string().into()),
+            };
+        })
+        .await
 }

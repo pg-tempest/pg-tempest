@@ -20,10 +20,11 @@ pub async fn create_pg_client(postgresql_container: &ContainerAsync<Postgres>) -
         },
         password: TEST_PG_PASSWORD.into(),
         user: TEST_PG_USER.into(),
-        outer: OuterDbmsConfigs { host: None, port: None },
+        outer: OuterDbmsConfigs {
+            host: None,
+            port: None,
+        },
     });
 
     PgClientImpl::new(configs)
-        .await
-        .expect("failed to create PgClient")
 }

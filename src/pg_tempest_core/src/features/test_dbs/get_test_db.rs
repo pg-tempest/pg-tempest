@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::oneshot;
 use tracing::{debug, info, instrument, warn};
 
-use crate::utils::unexpected_error::UnexpectedError;
+use crate::utils::errors::BoxDynError;
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{
@@ -26,7 +26,7 @@ pub struct GetTestDbOkResult {
 pub enum GetTestDbErrorResult {
     TemplateWasNotFound,
     TemplateIsNotInitialized,
-    Unknown { inner: UnexpectedError },
+    Unknown { inner: BoxDynError },
 }
 
 impl PgTempestCore {

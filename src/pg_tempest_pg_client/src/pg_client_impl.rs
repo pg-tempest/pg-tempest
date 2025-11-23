@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::utils::{db_already_exists, db_doesnt_exist, wrong_object_type};
 use async_trait::async_trait;
 use pg_tempest_core::utils::adhoc_display::AdHocDisplay;
-use pg_tempest_core::utils::unexpected_error::UnexpectedError;
+use pg_tempest_core::utils::errors::BoxDynError;
 use pg_tempest_core::{
     configs::dbms_configs::DbmsConfigs,
     models::value_types::pg_identifier::PgIdentifier,
@@ -19,7 +19,7 @@ pub struct PgClientImpl {
 }
 
 impl PgClientImpl {
-    pub async fn new(configs: Arc<DbmsConfigs>) -> Result<PgClientImpl, UnexpectedError> {
+    pub fn new(configs: Arc<DbmsConfigs>) -> PgClientImpl {
         let pg_connect_options = PgConnectOptions::new_without_pgpass()
             .host(&configs.inner.host)
             .port(configs.inner.port)
@@ -29,11 +29,10 @@ impl PgClientImpl {
 
         let pg_pool = PgPoolOptions::new()
             .max_connections(10)
-            .acquire_timeout(std::time::Duration::from_secs(3))
-            .connect_with(pg_connect_options)
-            .await?;
+            .acquire_timeout(std::time::Duration::from_millis(500))
+            .connect_lazy_with(pg_connect_options);
 
-        Ok(PgClientImpl { pg_pool })
+        PgClientImpl { pg_pool }
     }
 }
 
@@ -57,9 +56,7 @@ impl PgClient for PgClientImpl {
                     db_name: db_name.clone(),
                 })
             }
-            Err(error) => Err(AlterDbIsTemplateError::Unexpected {
-                inner: error.into(),
-            }),
+            Err(error) => Err(AlterDbIsTemplateError::Unexpected(error.into())),
         }
     }
 
@@ -99,9 +96,7 @@ impl PgClient for PgClientImpl {
                     template_db_name: template_db_name.unwrap(),
                 })
             }
-            Err(error) => Err(CreateDbError::Unexpected {
-                inner: error.into(),
-            }),
+            Err(error) => Err(CreateDbError::Unexpected(error.into())),
         }
     }
 
@@ -113,7 +108,7 @@ impl PgClient for PgClientImpl {
         match query_result {
             Ok(_) => Ok(()),
             Err(sqlx::Error::Database(error)) if db_doesnt_exist(&error) => {
-                Err(DropDbError::DbDoesNotExists {
+                Err(DropDbError::DbDoesNotExist {
                     db_name: db_name.clone(),
                 })
             }
@@ -122,13 +117,11 @@ impl PgClient for PgClientImpl {
                     db_name: db_name.clone(),
                 })
             }
-            Err(error) => Err(DropDbError::Unexpected {
-                inner: error.into(),
-            }),
+            Err(error) => Err(DropDbError::Unexpected(error.into())),
         }
     }
 
-    async fn get_dbs(&self) -> Result<Vec<Db>, UnexpectedError> {
+    async fn get_dbs(&self) -> Result<Vec<Db>, BoxDynError> {
         let rows: Vec<DbRow> = sqlx::query_as(
             r#"
             select
@@ -146,7 +139,7 @@ impl PgClient for PgClientImpl {
         let databases = rows
             .into_iter()
             .map(map_to_model)
-            .collect::<Result<Vec<Db>, UnexpectedError>>();
+            .collect::<Result<Vec<Db>, BoxDynError>>();
 
         databases
     }
@@ -161,7 +154,7 @@ struct DbRow {
     allow_connection: bool,
 }
 
-fn map_to_model(row: DbRow) -> Result<Db, UnexpectedError> {
+fn map_to_model(row: DbRow) -> Result<Db, BoxDynError> {
     Ok(Db {
         oid: row.oid.0,
         name: PgIdentifier::new(row.name)?,

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
@@ -15,7 +16,7 @@ pub struct ExtendTemplateInitializationOkResult {
 pub enum ExtendTemplateInitializationErrorResult {
     TemplateWasNotFound,
     InitializationIsFinished,
-    InitializationIsFailed,
+    InitializationIsFailed { reason: Option<Arc<str>> },
     InitializationIsNotStarted,
 }
 
@@ -37,12 +38,16 @@ impl PgTempestCore {
 
                 match initialization_state {
                     TemplateInitializationState::Finished => {
-                        warn!("Template {template_hash} initialization is already finished");
+                        warn!("Template {template_hash} initialization is finished");
                         Err(ExtendTemplateInitializationErrorResult::InitializationIsFinished)
                     }
-                    TemplateInitializationState::Failed => {
-                        warn!("Template {template_hash} initialization is already failed");
-                        Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed)
+                    TemplateInitializationState::Failed { reason } => {
+                        warn!("Template {template_hash} initialization is failed");
+                        Err(
+                            ExtendTemplateInitializationErrorResult::InitializationIsFailed {
+                                reason: reason.clone(),
+                            },
+                        )
                     }
                     TemplateInitializationState::Created
                     | TemplateInitializationState::Creating => {

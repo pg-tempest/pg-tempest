@@ -28,7 +28,9 @@ pub enum StartTemplateInitializationResponseBody {
     },
     InitializationIsInProgress {},
     InitializationIsFinished {},
-    InitializationIsFailed {},
+    InitializationIsFailed {
+        reason: Option<Arc<str>>,
+    },
     UnexpectedError {
         message: Box<str>,
     },
@@ -65,9 +67,9 @@ pub async fn start_template_initialization(
             status_code: StatusCode::OK,
             body: StartTemplateInitializationResponseBody::InitializationIsFinished {},
         },
-        Ok(StartTemplateInitializationResult::InitializationIsFailed) => JsonResponse {
+        Ok(StartTemplateInitializationResult::InitializationIsFailed { reason }) => JsonResponse {
             status_code: StatusCode::OK,
-            body: StartTemplateInitializationResponseBody::InitializationIsFailed {},
+            body: StartTemplateInitializationResponseBody::InitializationIsFailed { reason },
         },
         Err(err) => JsonResponse {
             status_code: StatusCode::INTERNAL_SERVER_ERROR,

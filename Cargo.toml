@@ -29,6 +29,7 @@ derive_more = { version = "2.0.1", features = [
     "deref",
     "debug",
     "into",
+    "from",
     "from_str",
 ] }
 regex = { version = "1.12.2" }

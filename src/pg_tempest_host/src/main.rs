@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use pg_tempest_core::PgTempestCore;
-use pg_tempest_core::utils::unexpected_error::UnexpectedError;
+use pg_tempest_core::utils::errors::BoxDynError;
 use pg_tempest_pg_client::pg_client_impl::PgClientImpl;
 use pg_tempest_server::Server;
 
@@ -11,12 +11,12 @@ mod configs;
 pub mod logging;
 
 #[tokio::main]
-async fn main() -> Result<(), UnexpectedError> {
+async fn main() -> Result<(), BoxDynError> {
     let configs = build_app_configs()?;
 
     setup_logging(configs.logging.clone())?;
 
-    let pg_client = Arc::new(PgClientImpl::new(configs.dbms.clone()).await?);
+    let pg_client = Arc::new(PgClientImpl::new(configs.dbms.clone()));
 
     let tempest_core = Arc::new(
         PgTempestCore::new(

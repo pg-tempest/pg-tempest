@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::utils::unexpected_error::UnexpectedError;
+use crate::utils::errors::BoxDynError;
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{TestDbState, TestDbUsage},
@@ -24,14 +24,10 @@ impl PgTempestCore {
 
         let db_creation_result = self
             .pg_client
-            .recreate_db(
-                test_db_name.clone().into(),
-                Some(template_db_name.into()),
-                false,
-            )
+            .recreate_db(test_db_name.clone().into(), Some(template_db_name.into()))
             .await;
 
-        let result: Result<(), UnexpectedError> = self
+        let result: Result<(), BoxDynError> = self
             .metadata_storage
             .execute_under_lock(template_hash, |template| {
                 let Some(template) = template else {

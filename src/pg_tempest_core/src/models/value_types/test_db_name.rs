@@ -39,7 +39,7 @@ impl TryFrom<PgIdentifier> for TestDbName {
     fn try_from(identifier: PgIdentifier) -> Result<Self, Self::Error> {
         let (_, [template_hash, test_db_id]) = TEMPLATE_DB_NAME_REGEX
             .captures(identifier.as_ref())
-            .ok_or("Identifier is not test db name")?
+            .ok_or(format!(r#""{identifier}" is invalid test db name"#))?
             .extract();
 
         // Format of a template hash and a test db id is validated by TEMPLATE_DB_NAME_REGEX

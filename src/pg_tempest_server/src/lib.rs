@@ -1,14 +1,14 @@
-use std::{error::Error, net::SocketAddrV4, sync::Arc};
-
-use axum::Router;
-use pg_tempest_core::PgTempestCore;
-use tokio::net::TcpListener;
+use std::{net::SocketAddrV4, sync::Arc};
 
 use crate::{
     configs::ServerConfigs,
     custom_trace_layer::custom_trace_layer,
     routes::{templates::create_templates_router, test_dbs::create_test_dbs_router},
 };
+use axum::Router;
+use pg_tempest_core::PgTempestCore;
+use pg_tempest_core::utils::errors::BoxDynError;
+use tokio::net::TcpListener;
 
 pub mod configs;
 mod custom_trace_layer;
@@ -30,7 +30,7 @@ impl Server {
         Server { router, configs }
     }
 
-    pub async fn start(self) -> Result<(), Box<dyn Error>> {
+    pub async fn start(self) -> Result<(), BoxDynError> {
         let socket_addr = SocketAddrV4::new(self.configs.ipv4, self.configs.port);
 
         tracing::info!("Starting server on {socket_addr}");

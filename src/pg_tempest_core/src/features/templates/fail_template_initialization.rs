@@ -1,3 +1,4 @@
+use crate::utils::option_ext::OptionExt;
 use derive_more::Display;
 use std::sync::Arc;
 use thiserror::Error;
@@ -10,9 +11,9 @@ use crate::{
 };
 
 #[derive(Error, Debug, Display)]
-#[display("{self:?}")]
-pub enum FailTemplateInitializationErrorResult {
-    TemplateWasNotFound,
+#[display("FailTemplateInitializationError::{self:?}")]
+pub enum FailTemplateInitializationError {
+    TemplateWasNotFound { template_hash: TemplateHash },
     InitializationIsFinished,
     InitializationIsNotStarted,
 }
@@ -22,12 +23,13 @@ impl PgTempestCore {
     pub async fn fail_template_initialization(
         self: Arc<Self>,
         template_hash: TemplateHash,
-    ) -> Result<(), FailTemplateInitializationErrorResult> {
+        reason: Option<Arc<str>>,
+    ) -> Result<(), FailTemplateInitializationError> {
         self.metadata_storage
             .execute_under_lock(template_hash, |template| {
                 let Some(template) = template else {
                     warn!("Template {template_hash} was not found");
-                    return Err(FailTemplateInitializationErrorResult::TemplateWasNotFound);
+                    return Err(FailTemplateInitializationError::TemplateWasNotFound { template_hash });
                 };
 
                 let initialization_state = &mut template.initialization_state;
@@ -36,30 +38,41 @@ impl PgTempestCore {
                     TemplateInitializationState::Finished => {
                         warn!("Template {template_hash} initialization is finished");
                         return Err(
-                            FailTemplateInitializationErrorResult::InitializationIsFinished,
+                            FailTemplateInitializationError::InitializationIsFinished,
                         );
                     }
-                    TemplateInitializationState::Failed => {
-                        debug!("Template {template_hash} initialization is already failed");
+                    TemplateInitializationState::Failed { reason } => {
+                        debug!(
+                            "Template {template_hash} initialization is already failed with reason {}",
+                            reason.as_format_arg()
+                        );
+
                         return Ok(());
                     }
                     TemplateInitializationState::Created => {
                         warn!("Template {template_hash} initialization is not started");
                         return Err(
-                            FailTemplateInitializationErrorResult::InitializationIsNotStarted,
+                            FailTemplateInitializationError::InitializationIsNotStarted,
                         );
                     }
                     TemplateInitializationState::Creating
                     | TemplateInitializationState::InProgress { .. } => {
-                        info!("Template {template_hash} initialization was failed");
+                        info!(
+                            "Template {template_hash} initialization was failed with reason {}",
+                            reason.as_format_arg()
+                        );
+
+                        let reason = reason.map(|x| x.into());
 
                         while let Some(awaiter) = template.template_awaiters.pop_front() {
-                            let _ = awaiter
-                                .result_sender
-                                .send(TemplateAwaitingResult::InitializationIsFailed);
+                            let _ = awaiter.result_sender.send(
+                                TemplateAwaitingResult::InitializationIsFailed {
+                                    reason: reason.clone(),
+                                },
+                            );
                         }
 
-                        *initialization_state = TemplateInitializationState::Failed;
+                        *initialization_state = TemplateInitializationState::Failed { reason };
 
                         return Ok(());
                     }

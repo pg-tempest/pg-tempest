@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tracing::{debug, info, instrument, warn};
 
+use crate::utils::option_ext::OptionExt;
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{
@@ -12,7 +13,7 @@ use crate::{
 
 pub enum FinishTemplateInitializationErrorResult {
     TemplateWasNotFound,
-    InitializationIsFailed,
+    InitializationIsFailed { reason: Option<Arc<str>> },
     InitializationIsNotStarted,
 }
 
@@ -34,9 +35,16 @@ impl PgTempestCore {
                         debug!("Template {template_hash} initialization is already finished");
                         Ok(())
                     }
-                    TemplateInitializationState::Failed => {
-                        warn!("Template {template_hash} initialization is failed");
-                        Err(FinishTemplateInitializationErrorResult::InitializationIsFailed)
+                    TemplateInitializationState::Failed { ref reason } => {
+                        warn!(
+                            "Template {template_hash} initialization is failed with reason {}",
+                            reason.as_format_arg()
+                        );
+                        Err(
+                            FinishTemplateInitializationErrorResult::InitializationIsFailed {
+                                reason: reason.clone(),
+                            },
+                        )
                     }
                     TemplateInitializationState::Created
                     | TemplateInitializationState::Creating => {

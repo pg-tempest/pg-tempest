@@ -37,7 +37,7 @@ async fn db_double_drop() {
     let result = client.drop_db(db_name).await;
 
     assert! {
-        matches!(result, Err(DropDbError::DbDoesNotExists {..})),
+        matches!(result, Err(DropDbError::DbDoesNotExist {..})),
         "{result:?}"
     }
 }
