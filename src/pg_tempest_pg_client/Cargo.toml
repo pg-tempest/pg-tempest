@@ -1,7 +1,7 @@
 [package]
 name = "pg_tempest_pg_client"
-version = "0.2.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 pg_tempest_core = { path = "../pg_tempest_core" }

@@ -7,6 +7,10 @@ members = [
     "src/pg_tempest_server",
 ]
 
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+
 [workspace.dependencies]
 axum = { version = "0.8.7", features = ["tokio", "json", "macros"] }
 config = { version = "0.15.19", features = ["toml"] }

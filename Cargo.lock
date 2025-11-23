@@ -1668,7 +1668,7 @@ dependencies = [
 
 [[package]]
 name = "pg-tempest"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "config",
  "derive_more",
@@ -1683,7 +1683,7 @@ dependencies = [
 
 [[package]]
 name = "pg_tempest_core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1699,7 +1699,7 @@ dependencies = [
 
 [[package]]
 name = "pg_tempest_pg_client"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "pg_tempest_core",
@@ -1711,7 +1711,7 @@ dependencies = [
 
 [[package]]
 name = "pg_tempest_server"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "chrono",
