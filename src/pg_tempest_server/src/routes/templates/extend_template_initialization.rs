@@ -25,8 +25,11 @@ pub enum ExtendTemplateInitializationResponseBody {
         new_initialization_deadline: DateTime<Utc>,
     },
     TemplateWasNotFound {},
+    InitializationIsNotStarted {},
     InitializationIsFinished {},
-    InitializationIsFailed {},
+    InitializationIsFailed {
+        reason: Option<Arc<str>>,
+    },
 }
 
 pub async fn extend_template_initialization(
@@ -55,9 +58,15 @@ pub async fn extend_template_initialization(
             status_code: StatusCode::CONFLICT,
             body: ExtendTemplateInitializationResponseBody::InitializationIsFinished {},
         },
-        Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed) => JsonResponse {
+        Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed { reason }) => {
+            JsonResponse {
+                status_code: StatusCode::CONFLICT,
+                body: ExtendTemplateInitializationResponseBody::InitializationIsFailed { reason },
+            }
+        }
+        Err(ExtendTemplateInitializationErrorResult::InitializationIsNotStarted) => JsonResponse {
             status_code: StatusCode::CONFLICT,
-            body: ExtendTemplateInitializationResponseBody::InitializationIsFailed {},
+            body: ExtendTemplateInitializationResponseBody::InitializationIsNotStarted {},
         },
     }
 }

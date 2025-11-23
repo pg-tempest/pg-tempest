@@ -3,10 +3,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 use tracing::info;
 
-use crate::{
-    PgTempestCore, metadata::template_metadata::TestDbState,
-    models::value_types::test_db_name::TestDbName,
-};
+use crate::{PgTempestCore, metadata::template_metadata::TestDbState};
 
 impl PgTempestCore {
     pub fn start_test_db_creation_retries_in_background(self: Arc<Self>) {
@@ -32,16 +29,16 @@ impl PgTempestCore {
                                 match test_db.state {
                                     TestDbState::Corrupted => {
                                         info!(
-                                            "Retring to recreate {}",
-                                            TestDbName::new(template_hash, test_db.id)
+                                            "Retrying to recreate test db {} {}",
+                                            template_hash, test_db.id
                                         );
                                     }
                                     TestDbState::InUse { usage_deadline }
                                         if usage_deadline <= now =>
                                     {
                                         info!(
-                                            "{} usage deadline is now. Recreating",
-                                            TestDbName::new(template_hash, test_db.id)
+                                            "Test db {} {} usage deadline is now. Recreating",
+                                            template_hash, test_db.id
                                         );
                                     }
                                     _ => continue,

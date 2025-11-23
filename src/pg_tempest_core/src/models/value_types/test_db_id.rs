@@ -1,7 +1,7 @@
-use std::{fmt::Debug, str::FromStr};
-
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
+use std::num::ParseIntError;
+use std::{fmt::Debug, str::FromStr};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Display, Deserialize, Serialize, Default)]
 #[display("{self:?}")]
@@ -24,7 +24,7 @@ impl Debug for TestDbId {
 }
 
 impl TryFrom<&str> for TestDbId {
-    type Error = anyhow::Error;
+    type Error = ParseIntError;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         TestDbId::from_str(s)
@@ -44,7 +44,7 @@ impl From<TestDbId> for String {
 }
 
 impl FromStr for TestDbId {
-    type Err = anyhow::Error;
+    type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let value: u16 = u16::from_str_radix(s, 16)?;

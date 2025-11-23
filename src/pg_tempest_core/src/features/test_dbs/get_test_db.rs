@@ -1,13 +1,13 @@
-use std::{sync::Arc, time::Duration};
-
 use chrono::{DateTime, Utc};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::oneshot;
 use tracing::{debug, info, instrument, warn};
 
+use crate::utils::errors::BoxDynError;
 use crate::{
     PgTempestCore,
     metadata::template_metadata::{
-        TemplateInitializationState, TestDbMetadata, TestDbState, TestDbUsage, TestDbWaiter,
+        TemplateInitializationState, TestDbAwaiter, TestDbMetadata, TestDbState, TestDbUsage,
     },
     models::{
         db_connection_options::DbConnectionOptions,
@@ -25,8 +25,8 @@ pub struct GetTestDbOkResult {
 
 pub enum GetTestDbErrorResult {
     TemplateWasNotFound,
-    TemplateIsNotInitalized,
-    Unknown { inner: anyhow::Error },
+    TemplateIsNotInitialized,
+    Unknown { inner: BoxDynError },
 }
 
 impl PgTempestCore {
@@ -36,7 +36,7 @@ impl PgTempestCore {
         template_hash: TemplateHash,
         usage_duration: Duration,
     ) -> Result<GetTestDbOkResult, GetTestDbErrorResult> {
-        let test_db_usage_or_reciver: TestDbUsageOrReciver = self
+        let test_db_usage_or_receiver: TestDbUsageOrReceiver = self
             .metadata_storage
             .execute_under_lock(template_hash, |template| {
                 let Some(template) = template else {
@@ -46,10 +46,10 @@ impl PgTempestCore {
 
                 if !matches!(
                     template.initialization_state,
-                    TemplateInitializationState::Done
+                    TemplateInitializationState::Finished
                 ) {
                     warn!("Template {template_hash} initialization is not finished");
-                    return Err(GetTestDbErrorResult::TemplateIsNotInitalized);
+                    return Err(GetTestDbErrorResult::TemplateIsNotInitialized);
                 };
 
                 let ready_test_db = template
@@ -70,26 +70,26 @@ impl PgTempestCore {
 
                     debug!("Ready test db {template_hash} {test_db_id} was get from pool");
 
-                    return Ok(TestDbUsageOrReciver::Usage(usage));
+                    return Ok(TestDbUsageOrReceiver::Usage(usage));
                 }
 
                 debug!("Ready test db {template_hash} was not found in pool");
 
-                let (sender, reciver) = oneshot::channel();
-                let waiter = TestDbWaiter {
+                let (sender, receiver) = oneshot::channel();
+                let awaiter = TestDbAwaiter {
                     usage_duration,
-                    readines_sender: sender,
+                    readiness_sender: sender,
                 };
-                template.test_db_waiters.push_back(waiter);
+                template.test_db_awaiters.push_back(awaiter);
 
                 let test_dbs_in_creation = template
                     .test_dbs
                     .iter()
                     .filter(|x| matches!(x.state, TestDbState::Creating))
                     .count();
-                let waiter_count = template.test_db_waiters.len();
+                let awaiters_count = template.test_db_awaiters.len();
 
-                if waiter_count > test_dbs_in_creation {
+                if awaiters_count > test_dbs_in_creation {
                     let test_db_id = template.next_test_db_id();
                     let test_db = TestDbMetadata {
                         id: test_db_id,
@@ -103,13 +103,14 @@ impl PgTempestCore {
                     info!("New test db {template_hash} {test_db_id} was added to pool");
                 }
 
-                Ok(TestDbUsageOrReciver::Reciver(reciver))
+                Ok(TestDbUsageOrReceiver::Receiver(receiver))
             })
             .await?;
 
-        let usage = match test_db_usage_or_reciver {
-            TestDbUsageOrReciver::Usage(usage) => usage,
-            TestDbUsageOrReciver::Reciver(reciver) => reciver.await.unwrap(),
+        let usage = match test_db_usage_or_receiver {
+            TestDbUsageOrReceiver::Usage(usage) => usage,
+            // TODO: Remove unwrap
+            TestDbUsageOrReceiver::Receiver(receiver) => receiver.await.unwrap(),
         };
 
         info!(
@@ -130,7 +131,7 @@ impl PgTempestCore {
     }
 }
 
-enum TestDbUsageOrReciver {
+enum TestDbUsageOrReceiver {
     Usage(TestDbUsage),
-    Reciver(oneshot::Receiver<TestDbUsage>),
+    Receiver(oneshot::Receiver<TestDbUsage>),
 }

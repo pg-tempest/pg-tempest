@@ -1,0 +1,32 @@
+[server]
+ipv4 = "127.0.0.1"
+port = 8000
+
+[dbms]
+database = "postgres"
+user = "postgres"
+password = "postgres"
+
+[dbms.inner]
+host = "localhost"
+port = 5432
+
+[dbms.outer]
+#host =
+#port =
+
+[db_pool]
+min_size = 10
+creation_retries_delay_in_ms = 100
+
+[logging]
+server = "Info"
+core = "Info"
+db_queries = "Info"
+
+[templates]
+#parent_template_db_name = "template0"
+
+[templates.initialization]
+max_deadline_handling_delay_ms = 50
+long_polling_timeout_ms = 1000

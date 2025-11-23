@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
+use crate::utils::errors::BoxDynError;
 use crate::{
     PgTempestCore,
-    db_queries::recreate_test_db::recreate_test_db,
     metadata::template_metadata::{TestDbState, TestDbUsage},
     models::value_types::{
         template_db_name::TemplateDbName, template_hash::TemplateHash, test_db_id::TestDbId,
         test_db_name::TestDbName,
     },
+    pg_client_extensions::PgClientExtensions,
 };
-use anyhow::{anyhow, bail};
 use tracing::{debug, error, instrument};
 
 impl PgTempestCore {
@@ -20,40 +20,39 @@ impl PgTempestCore {
         test_db_id: TestDbId,
     ) {
         let test_db_name = TestDbName::new(template_hash, test_db_id);
+        let template_db_name = TemplateDbName::new(template_hash);
 
-        let db_creation_result = recreate_test_db(
-            &self.dbms_connections_pool,
-            &test_db_name,
-            &TemplateDbName::new(template_hash),
-        )
-        .await;
+        let db_creation_result = self
+            .pg_client
+            .recreate_db(test_db_name.clone().into(), Some(template_db_name.into()))
+            .await;
 
-        let result = self
+        let result: Result<(), BoxDynError> = self
             .metadata_storage
             .execute_under_lock(template_hash, |template| {
                 let Some(template) = template else {
-                    bail!("Template {template_hash} was not found");
+                    return Err("Template {template_hash} was not found".into());
                 };
 
                 let test_db = template
                     .test_dbs
                     .iter_mut()
                     .find(|x| x.id == test_db_id)
-                    .ok_or(anyhow!("Test db {test_db_id} was not found"))?;
+                    .ok_or("Test db {test_db_id} was not found")?;
 
                 if let Err(_) = db_creation_result {
                     test_db.state = TestDbState::Corrupted;
-                    bail!("Failed to create {test_db_name}");
+                    return Err("Failed to create {test_db_name}".into());
                 }
 
-                while let Some(test_db_waiter) = template.test_db_waiters.pop_front() {
-                    let usage_deadline = self.clock.now() + test_db_waiter.usage_duration;
+                while let Some(test_db_awaiter) = template.test_db_awaiters.pop_front() {
+                    let usage_deadline = self.clock.now() + test_db_awaiter.usage_duration;
                     let usage = TestDbUsage {
                         test_db_id,
                         deadline: usage_deadline,
                     };
 
-                    if let Ok(_) = test_db_waiter.readines_sender.send(usage) {
+                    if let Ok(_) = test_db_awaiter.readiness_sender.send(usage) {
                         test_db.state = TestDbState::InUse { usage_deadline };
                         return Ok(());
                     }

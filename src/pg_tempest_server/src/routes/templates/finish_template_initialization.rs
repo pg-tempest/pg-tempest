@@ -21,7 +21,8 @@ pub struct FinishTemplateInitializationRequestBody {
 pub enum FinishTemplateInitializationResponseBody {
     InitializationIsFinished {},
     TemplateWasNotFound {},
-    InitializationIsFailed {},
+    InitializationIsNotStarted {},
+    InitializationIsFailed { reason: Option<Arc<str>> },
 }
 
 pub async fn finish_template_initialization(
@@ -37,13 +38,19 @@ pub async fn finish_template_initialization(
             status_code: StatusCode::OK,
             body: FinishTemplateInitializationResponseBody::InitializationIsFinished {},
         },
-        Err(FinishTemplateInitializationErrorResult::InitializationIsFailed) => JsonResponse {
-            status_code: StatusCode::CONFLICT,
-            body: FinishTemplateInitializationResponseBody::InitializationIsFailed {},
-        },
+        Err(FinishTemplateInitializationErrorResult::InitializationIsFailed { reason }) => {
+            JsonResponse {
+                status_code: StatusCode::CONFLICT,
+                body: FinishTemplateInitializationResponseBody::InitializationIsFailed { reason },
+            }
+        }
         Err(FinishTemplateInitializationErrorResult::TemplateWasNotFound) => JsonResponse {
             status_code: StatusCode::NOT_FOUND,
             body: FinishTemplateInitializationResponseBody::TemplateWasNotFound {},
+        },
+        Err(FinishTemplateInitializationErrorResult::InitializationIsNotStarted) => JsonResponse {
+            status_code: StatusCode::CONFLICT,
+            body: FinishTemplateInitializationResponseBody::InitializationIsNotStarted {},
         },
     }
 }

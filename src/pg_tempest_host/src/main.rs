@@ -1,40 +1,41 @@
 use std::sync::Arc;
 
 use pg_tempest_core::PgTempestCore;
+use pg_tempest_core::utils::errors::BoxDynError;
+use pg_tempest_pg_client::pg_client_impl::PgClientImpl;
 use pg_tempest_server::Server;
-use tracing::Level;
-use tracing_subscriber::{fmt::format::DefaultFields, layer::SubscriberExt};
 
-use crate::configs::build_app_configs;
+use crate::{configs::build_app_configs, logging::setup_logging};
 
 mod configs;
+pub mod logging;
 
 #[tokio::main]
-async fn main() {
-    let configs = build_app_configs().unwrap();
+async fn main() -> Result<(), BoxDynError> {
+    let configs = build_app_configs()?;
 
-    let filter = tracing_subscriber::filter::Targets::new()
-        .with_default(Level::DEBUG)
-        .with_target("sqlx", Level::WARN);
+    setup_logging(configs.logging.clone())?;
 
-    let r = tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_target(false)
-                .fmt_fields(DefaultFields::new()),
+    let pg_client = Arc::new(PgClientImpl::new(configs.dbms.clone()));
+
+    let tempest_core = Arc::new(
+        PgTempestCore::new(
+            pg_client,
+            configs.dbms.clone(),
+            configs.db_pool.clone(),
+            configs.templates.clone(),
         )
-        .with(filter);
-
-    tracing::subscriber::set_global_default(r).unwrap();
-
-    let tempest_core = PgTempestCore::new(configs.dbms.clone(), configs.db_pool.clone())
-        .await
-        .unwrap();
-
-    let tempest_core = Arc::new(tempest_core);
+        .await?,
+    );
 
     let server = Server::new(tempest_core.clone(), configs.server.clone());
 
-    tempest_core.start_test_db_creation_retries_in_background();
-    server.start().await;
+    tempest_core
+        .clone()
+        .start_test_db_creation_retries_in_background();
+    tempest_core.start_template_initialization_deadline_handling();
+
+    server.start().await?;
+
+    Ok(())
 }

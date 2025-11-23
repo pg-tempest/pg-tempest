@@ -57,7 +57,7 @@ pub async fn get_test_db(
             status_code: StatusCode::NOT_FOUND,
             body: GetTestDbResponseBody::TemplateWasNotFound {},
         },
-        Err(GetTestDbErrorResult::TemplateIsNotInitalized) => JsonResponse {
+        Err(GetTestDbErrorResult::TemplateIsNotInitialized) => JsonResponse {
             status_code: StatusCode::CONFLICT,
             body: GetTestDbResponseBody::TemplateIsNotInitialized {},
         },

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
@@ -15,7 +16,8 @@ pub struct ExtendTemplateInitializationOkResult {
 pub enum ExtendTemplateInitializationErrorResult {
     TemplateWasNotFound,
     InitializationIsFinished,
-    InitializationIsFailed,
+    InitializationIsFailed { reason: Option<Arc<str>> },
+    InitializationIsNotStarted,
 }
 
 impl PgTempestCore {
@@ -35,13 +37,22 @@ impl PgTempestCore {
                 let initialization_state = &mut template_metadata.initialization_state;
 
                 match initialization_state {
-                    TemplateInitializationState::Done => {
-                        warn!("Template {template_hash} initialization is already finished");
+                    TemplateInitializationState::Finished => {
+                        warn!("Template {template_hash} initialization is finished");
                         Err(ExtendTemplateInitializationErrorResult::InitializationIsFinished)
                     }
-                    TemplateInitializationState::Failed => {
-                        warn!("Template {template_hash} initialization is already failed");
-                        Err(ExtendTemplateInitializationErrorResult::InitializationIsFailed)
+                    TemplateInitializationState::Failed { reason } => {
+                        warn!("Template {template_hash} initialization is failed");
+                        Err(
+                            ExtendTemplateInitializationErrorResult::InitializationIsFailed {
+                                reason: reason.clone(),
+                            },
+                        )
+                    }
+                    TemplateInitializationState::Created
+                    | TemplateInitializationState::Creating => {
+                        warn!("Template {template_hash} initialization is not started");
+                        Err(ExtendTemplateInitializationErrorResult::InitializationIsNotStarted)
                     }
                     TemplateInitializationState::InProgress {
                         initialization_deadline,

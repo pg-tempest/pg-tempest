@@ -1,15 +1,17 @@
-use std::{collections::VecDeque, time::Duration};
-
 use chrono::{DateTime, Utc};
+use std::sync::Arc;
+use std::{collections::VecDeque, time::Duration};
 use tokio::sync::oneshot;
 
 use crate::models::value_types::{template_hash::TemplateHash, test_db_id::TestDbId};
+use crate::utils::errors::ArcDynError;
 
 pub struct TemplateMetadata {
     pub template_hash: TemplateHash,
     pub initialization_state: TemplateInitializationState,
+    pub template_awaiters: VecDeque<TemplateAwaiter>,
     pub test_dbs: Vec<TestDbMetadata>,
-    pub test_db_waiters: VecDeque<TestDbWaiter>,
+    pub test_db_awaiters: VecDeque<TestDbAwaiter>,
     pub test_db_id_sequence: u16,
 }
 
@@ -21,11 +23,32 @@ impl TemplateMetadata {
 }
 
 pub enum TemplateInitializationState {
+    Creating,
+    Created,
     InProgress {
         initialization_deadline: DateTime<Utc>,
     },
-    Done,
-    Failed,
+    Finished,
+    Failed {
+        reason: Option<Arc<str>>,
+    },
+}
+
+pub struct TemplateAwaiter {
+    pub initialization_duration: Duration,
+    pub result_sender: oneshot::Sender<TemplateAwaitingResult>,
+}
+
+pub enum TemplateAwaitingResult {
+    InitializationIsStarted {
+        initialization_deadline: DateTime<Utc>,
+    },
+    InitializationIsInProgress,
+    InitializationIsFinished,
+    InitializationIsFailed {
+        reason: Option<Arc<str>>,
+    },
+    UnexpectedError(ArcDynError),
 }
 
 pub struct TestDbMetadata {
@@ -40,9 +63,9 @@ pub enum TestDbState {
     InUse { usage_deadline: DateTime<Utc> },
 }
 
-pub struct TestDbWaiter {
+pub struct TestDbAwaiter {
     pub usage_duration: Duration,
-    pub readines_sender: oneshot::Sender<TestDbUsage>,
+    pub readiness_sender: oneshot::Sender<TestDbUsage>,
 }
 
 pub struct TestDbUsage {

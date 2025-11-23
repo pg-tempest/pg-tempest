@@ -1,15 +1,12 @@
 [package]
 name = "pg_tempest_server"
-version = "0.2.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 pg_tempest_core = { path = "../pg_tempest_core" }
 axum = { workspace = true }
-tower = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
-uuid = { workspace = true }
 chrono = { workspace = true }
-anyhow = { workspace = true }

@@ -2,41 +2,42 @@
 resolver = "2"
 members = [
     "src/pg_tempest_core",
+    "src/pg_tempest_pg_client",
     "src/pg_tempest_host",
     "src/pg_tempest_server",
 ]
 
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+
 [workspace.dependencies]
-axum = { version = "0.8.4", features = ["tokio", "json", "macros"] }
-config = { version = "0.15.16", features = ["toml"] }
-tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "sync"] }
-uuid = { version = "1.10.0", features = ["v7", "serde"] }
-serde = { version = "1.0.210", features = ["derive"] }
+axum = { version = "0.8.7", features = ["tokio", "json", "macros"] }
+config = { version = "0.15.19", features = ["toml"] }
+tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread", "sync", "time"] }
+serde = { version = "1.0.228", features = ["derive", "std", "rc"] }
 async-trait = { version = "0.1.89" }
+extension-trait = { version = "1.0.2" }
 chrono = { version = "0.4.42", features = ["serde"] }
-reqwest = { version = "0.12.23", features = ["json"] }
-url = { version = "2.5.7" }
 sqlx = { version = "0.8.2", features = [
     "runtime-tokio-rustls",
     "postgres",
     "uuid",
     "chrono",
 ] }
-tracing = "0.1.41"
+tracing = { version = "0.1.41" }
 tracing-subscriber = { version = "0.3.20", features = ["json"] }
-tower = { version = "0.5.2" }
 derive_more = { version = "2.0.1", features = [
     "as_ref",
     "display",
     "deref",
     "debug",
     "into",
+    "from",
+    "from_str",
 ] }
-regex = { version = "1.11.3" }
-testcontainers = { version = "0.24" }
-testcontainers-modules = { version = "0.12", features = ["postgres"] }
-static_assertions = { version = "1.1" }
-dashmap = { version = "6.1.0" }
-hex = { version = "0.4" }
+regex = { version = "1.12.2" }
+testcontainers = { version = "0.25.2" }
+testcontainers-modules = { version = "0.13.0", features = ["postgres"] }
+hex = { version = "0.4.3" }
 thiserror = { version = "2.0.17" }
-anyhow = { version = "1.0.100" }
